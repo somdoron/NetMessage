@@ -1,11 +1,12 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using NetMessage.Core;
 using NetMessage.Core.AsyncIO;
 using NetMessage.Core.Core;
+using NetMessage.Core.Transport;
 
-namespace NetMessage.Core.Transport.InProc
+namespace NetMessage.NetMQ.InProc
 {
-    public class ConnectEndpoint : EndpointBase
+    public class ConnectEndpoint : EndpointBase<NetMQMessage>
     {
         enum State
         {
@@ -21,7 +22,8 @@ namespace NetMessage.Core.Transport.InProc
 
         private Session m_session;
 
-        public ConnectEndpoint(Endpoint endpoint) : base(endpoint)
+        public ConnectEndpoint(Endpoint<NetMQMessage> endpoint)
+            : base(endpoint)
         {            
             m_state = State.Idle;
             m_session = new Session(this, this);

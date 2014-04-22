@@ -1,29 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using NetMessage.Core;
 using NetMessage.Core.AsyncIO;
 using NetMessage.Core.Core;
+using NetMessage.Core.Transport;
 
-namespace NetMessage.Core.Transport.InProc
+namespace NetMessage.NetMQ.InProc
 {
     public class Session : StateMachine
     {
-        class Pipe : PipeBase
+        class Pipe : PipeBase<NetMQMessage>
         {
             private readonly Session m_session;
 
-            public Pipe(EndpointBase endpointBase, Session session)
+            public Pipe(EndpointBase<NetMQMessage> endpointBase, Session session)
                 : base(endpointBase)
             {
                 m_session = session;
             }
 
-            protected override PipeStatus SendInner(Message message)
+            protected override PipeStatus SendInner(NetMQMessage message)
             {
                 return m_session.Send(message);
             }
 
-            protected override PipeStatus ReceiveInner(out Message message)
+            protected override PipeStatus ReceiveInner(out NetMQMessage message)
             {
                 return m_session.Receive(out message);
             }
@@ -73,14 +75,14 @@ namespace NetMessage.Core.Transport.InProc
         private StateMachineEvent m_receivedEvent;
         private StateMachineEvent m_disconnectedEvent;
 
-        private Queue<Message> m_messageQueue;
+        private Queue<NetMQMessage> m_messageQueue;
 
         // This message is the one being sent from this session to the peer
         // session. It holds the data only temporarily, until the peer moves
         // it to its msgqueue.
-        private Message m_message;
+        private NetMQMessage m_message;
 
-        public Session(EndpointBase endpointBase, StateMachine owner) :
+        public Session(EndpointBase<NetMQMessage> endpointBase, StateMachine owner) :
             base(SourceId, owner)
         {            
             m_state = State.Idle;
@@ -93,7 +95,7 @@ namespace NetMessage.Core.Transport.InProc
                 endpointBase.GetOption(SocketOption.ReceiveBuffer);
 
             // TODO: limit the maximum memory of the queue
-            m_messageQueue = new Queue<Message>();
+            m_messageQueue = new Queue<NetMQMessage>();
             m_message = null;
 
             m_connectEvent = new StateMachineEvent();
@@ -142,7 +144,7 @@ namespace NetMessage.Core.Transport.InProc
         }
 
 
-        private PipeStatus Send(Message message)
+        private PipeStatus Send(NetMQMessage message)
         {
             if (m_state == State.Disconnected)
                 throw new NetMessageException(NetMessageErrorCode.ConnectionReset);
@@ -159,7 +161,7 @@ namespace NetMessage.Core.Transport.InProc
             return PipeStatus.Ok;
         }
 
-        private PipeStatus Receive(out Message message)
+        private PipeStatus Receive(out NetMQMessage message)
         {
             Debug.Assert(m_state == State.Active || m_state == State.Disconnected);
 

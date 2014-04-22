@@ -3,12 +3,13 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using NetMessage.Core.AsyncIO;
 using NetMessage.Core.Core;
+using NetMessage.NetMQ;
 using NetMessage.Transport.Utils;
 using SocketType = System.Net.Sockets.SocketType;
 
 namespace NetMessage.Core.Transport.Tcp
 {
-    public class BoundEndpoint : EndpointBase
+    public class BoundEndpoint : EndpointBase<NetMQMessage>
     {
         enum State
         {
@@ -27,7 +28,7 @@ namespace NetMessage.Core.Transport.Tcp
 
         private List<AcceptedConnection> m_connections;
 
-        public BoundEndpoint(Endpoint endpoint)
+        public BoundEndpoint(Endpoint<NetMQMessage> endpoint)
             : base(endpoint)
         {
             string address = endpoint.Address;

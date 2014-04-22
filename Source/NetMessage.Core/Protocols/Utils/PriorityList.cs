@@ -2,13 +2,13 @@
 using System.Diagnostics;
 using NetMessage.Core.Core;
 
-namespace NetMessage.Core.Patterns.Utils
+namespace NetMessage.Core.Protocols.Utils
 {
-    public class PriorityList
+    public class PriorityList<T> where T : MessageBase
     {        
         public class Data
         {
-            public IPipe Pipe { get; set; }
+            public IPipe<T> Pipe { get; set; }
 
             public int Priority { get; set; }            
         }
@@ -58,7 +58,7 @@ namespace NetMessage.Core.Patterns.Utils
             }
         }
 
-        public IPipe Pipe            
+        public IPipe<T> Pipe            
         {
             get
             {
@@ -79,7 +79,7 @@ namespace NetMessage.Core.Patterns.Utils
             }
         }      
 
-        public Data Add(IPipe pipe, int priority)
+        public Data Add(IPipe<T> pipe, int priority)
         {
             Data data = new Data();
             data.Pipe = pipe;

@@ -2,25 +2,25 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace NetMessage.Core
+namespace NetMessage.NetMQ
 {
-    public class Frame : IEquatable<Frame>, IEnumerable<byte>
+    public class NetMQFrame : IEquatable<NetMQFrame>, IEnumerable<byte>
     {
         private int m_messageSize;
 
-        public Frame()
+        public NetMQFrame()
         {
             m_messageSize = 0;
             Buffer = new ArraySegment<byte>(new byte[0]);
         }
 
-        public Frame(int size)
+        public NetMQFrame(int size)
         {
             m_messageSize = size;
             Buffer = new ArraySegment<byte>(new byte[size]);
         }
 
-        public Frame(byte[] buffer)
+        public NetMQFrame(byte[] buffer)
         {
             if (buffer == null)
             {
@@ -31,7 +31,7 @@ namespace NetMessage.Core
             m_messageSize = buffer.Length;
         }
 
-        public Frame(byte[] buffer, int offset, int count)
+        public NetMQFrame(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
             {
@@ -42,7 +42,7 @@ namespace NetMessage.Core
             m_messageSize = count;
         }
 
-        public Frame(string message)
+        public NetMQFrame(string message)
             : this((byte[]) Encoding.ASCII.GetBytes(message))
         {
 
@@ -79,11 +79,11 @@ namespace NetMessage.Core
         }
 
         /// <summary>
-        /// Gets an empty <see cref="Frame"/> that may be used as message separators.
+        /// Gets an empty <see cref="NetMQFrame"/> that may be used as message separators.
         /// </summary>
-        public static Frame Empty
+        public static NetMQFrame Empty
         {
-            get { return new Frame(0); }
+            get { return new NetMQFrame(0); }
         }
 
         public byte this[int index]
@@ -109,19 +109,19 @@ namespace NetMessage.Core
         }
 
         /// <summary>
-        /// Create a copy of the supplied buffer and store it in a <see cref="Frame"/>.
+        /// Create a copy of the supplied buffer and store it in a <see cref="NetMQFrame"/>.
         /// </summary>
         /// <param name="buffer">The <see cref="byte"/> array to copy.</param>
-        /// <returns>A <see cref="Frame"/> containing a copy of <paramref name="buffer"/>.</returns>
+        /// <returns>A <see cref="NetMQFrame"/> containing a copy of <paramref name="buffer"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="buffer"/> is null.</exception>
-        public static Frame Copy(byte[] buffer)
+        public static NetMQFrame Copy(byte[] buffer)
         {
             if (buffer == null)
             {
                 throw new ArgumentNullException("buffer");
             }
 
-            var copy = new Frame(buffer.Length);
+            var copy = new NetMQFrame(buffer.Length);
 
             System.Buffer.BlockCopy(buffer, 0, copy.Buffer.Array, copy.Buffer.Offset, buffer.Length);
 
@@ -129,19 +129,19 @@ namespace NetMessage.Core
         }
 
         /// <summary>
-        /// Create a copy of the supplied <see cref="Frame"/>.
+        /// Create a copy of the supplied <see cref="NetMQFrame"/>.
         /// </summary>
-        /// <param name="frame">The <see cref="Frame"/> to copy.</param>
-        /// <returns>A <see cref="Frame"/> containing a copy of <paramref name="frame"/>.</returns>
+        /// <param name="frame">The <see cref="NetMQFrame"/> to copy.</param>
+        /// <returns>A <see cref="NetMQFrame"/> containing a copy of <paramref name="frame"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="frame"/> is null.</exception>
-        public static Frame Copy(Frame frame)
+        public static NetMQFrame Copy(NetMQFrame frame)
         {
             if (frame == null)
             {
                 throw new ArgumentNullException("frame");
             }
 
-            var copy = new Frame(new byte[frame.BufferSize]);
+            var copy = new NetMQFrame(new byte[frame.BufferSize]);
             copy.MessageSize = frame.MessageSize;
 
             System.Buffer.BlockCopy(frame.Buffer.Array, frame.Buffer.Offset, copy.Buffer.Array, copy.Buffer.Offset, frame.BufferSize);
@@ -155,11 +155,11 @@ namespace NetMessage.Core
         }
 
         /// <summary>
-        /// Determines whether the specified <see cref="Frame"/> is equal to the current <see cref="Frame"/>.
+        /// Determines whether the specified <see cref="NetMQFrame"/> is equal to the current <see cref="NetMQFrame"/>.
         /// </summary>
-        /// <param name="other">The <see cref="Frame"/> to compare with the current <see cref="Frame"/>.</param>
+        /// <param name="other">The <see cref="NetMQFrame"/> to compare with the current <see cref="NetMQFrame"/>.</param>
         /// <returns>true if the specified System.Object is equal to the current System.Object; otherwise, false.</returns>
-        public bool Equals(Frame other)
+        public bool Equals(NetMQFrame other)
         {
             if (MessageSize > other.BufferSize || MessageSize != other.MessageSize)
             {

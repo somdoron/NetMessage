@@ -1,8 +1,9 @@
 ﻿using NetMessage.Core.Core;
+using NetMessage.Core.Transport;
 
-namespace NetMessage.Core.Transport.InProc
+namespace NetMessage.NetMQ.InProc
 {
-    public class InProcTransport : Transport
+    public class InProcTransport : Core.Transport.Transport<NetMQMessage>
     {
         public InProcTransport()
         {
@@ -22,16 +23,16 @@ namespace NetMessage.Core.Transport.InProc
         public override string Name
         {
             get { return "inproc"; }
-        }     
-
-        public override EndpointBase Bind(object hint)
-        {
-            return new BoundEndpoint((Endpoint)hint);
         }
 
-        public override EndpointBase Connect(object hint)
+        public override EndpointBase<NetMQMessage> Bind(object hint)
         {
-            return new ConnectEndpoint((Endpoint)hint);
+            return new BoundEndpoint((Endpoint<NetMQMessage>)hint);
+        }
+
+        public override EndpointBase<NetMQMessage> Connect(object hint)
+        {
+            return new ConnectEndpoint((Endpoint<NetMQMessage>)hint);
         }
     }
 }

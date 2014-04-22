@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using NetMessage.Core;
 
-namespace NetMessage.Core.Transport.InProc
+namespace NetMessage.NetMQ.InProc
 {
     public class InProcSystem : IDisposable
     {

@@ -1,55 +1,54 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Dynamic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using NetMessage.Core;
 
-namespace NetMessage.Core
+namespace NetMessage.NetMQ
 {
-    public class Message : IEnumerable<Frame>
+    public class NetMQMessage : MessageBase, IEnumerable<NetMQFrame>
     {
-        private List<Frame> m_frames;
+        private List<NetMQFrame> m_frames;
 
-        public Message(int frames)
+        public NetMQMessage(int frames)
         {
-            m_frames = new List<Frame>(frames);
+            m_frames = new List<NetMQFrame>(frames);
         }
 
-        public Message()
+        public NetMQMessage()
         {
-            m_frames = new List<Frame>();
+            m_frames = new List<NetMQFrame>();
         }
 
-        public Message(IEnumerable<Frame> frames)
+        public NetMQMessage(IEnumerable<NetMQFrame> frames)
         {
             if (frames == null)
             {
                 throw new ArgumentNullException("frames");
             }
 
-            m_frames = new List<Frame>(frames);
+            m_frames = new List<NetMQFrame>(frames);
         }
 
-        public Message(byte[] buffers)
+        public NetMQMessage(byte[] buffers)
         {
             if (buffers == null)
             {
                 throw new ArgumentNullException("buffers");
             }
 
-            m_frames = new List<Frame>(buffers.Select(b => new Frame(b)));
+            m_frames = new List<NetMQFrame>(buffers.Select(b => new NetMQFrame(b)));
         }
 
         /// <summary>
-        /// Gets the <see cref="Frame"/> at the specified index.
+        /// Gets the <see cref="NetMQFrame"/> at the specified index.
         /// </summary>
-        /// <param name="index">The zero-based index of the <see cref="Frame"/> to get.</param>
-        /// <returns>The <see cref="Frame"/> at the specified index.</returns>
+        /// <param name="index">The zero-based index of the <see cref="NetMQFrame"/> to get.</param>
+        /// <returns>The <see cref="NetMQFrame"/> at the specified index.</returns>
         /// <exception cref="ArgumentOutOfRangeException">
         /// <paramref name="index"/>is less than 0 -or- <paramref name="index"/> is equal to or greater than <see cref="FrameCount"/>.
         /// </exception>
-        public Frame this[int index]
+        public NetMQFrame this[int index]
         {
             get
             {
@@ -82,7 +81,7 @@ namespace NetMessage.Core
         /// <summary>
         /// Gets the first frame in the current message.
         /// </summary>
-        public Frame First
+        public NetMQFrame First
         {
             get { return m_frames[0]; }
         }
@@ -90,13 +89,13 @@ namespace NetMessage.Core
         /// <summary>
         /// Gets the last frame in the current message.
         /// </summary>
-        public Frame Last
+        public NetMQFrame Last
         {
             get { return m_frames[m_frames.Count - 1]; }
         }
 
 
-        public IEnumerator<Frame> GetEnumerator()
+        public IEnumerator<NetMQFrame> GetEnumerator()
         {
             return m_frames.GetEnumerator();
         }
@@ -108,59 +107,59 @@ namespace NetMessage.Core
 
         public void Append(byte[] buffer)
         {
-            Frame frame = new Frame(buffer);
+            NetMQFrame frame = new NetMQFrame(buffer);
             m_frames.Add(frame);
         }
 
-        public void Append(Frame frame)
+        public void Append(NetMQFrame frame)
         {
             m_frames.Add(frame);
         }
 
         public void Append(string message)
         {
-            m_frames.Add(new Frame(message));
+            m_frames.Add(new NetMQFrame(message));
         }
 
         public void AppendEmptyFrame()
         {
-            m_frames.Add(Frame.Empty);
+            m_frames.Add(NetMQFrame.Empty);
         }
 
-        public void Push(Frame frame)
+        public void Push(NetMQFrame frame)
         {
             m_frames.Insert(0, frame);
         }
 
         public void Push(byte[] bytes)
         {
-            Frame frame = new Frame(bytes);
+            NetMQFrame frame = new NetMQFrame(bytes);
             m_frames.Insert(0, frame);
         }
 
         public void Push(string message)
         {
-            m_frames.Insert(0, new Frame(message));
+            m_frames.Insert(0, new NetMQFrame(message));
         }
 
         public void PushEmptyFrame()
         {
-            m_frames.Insert(0, Frame.Empty);
+            m_frames.Insert(0, NetMQFrame.Empty);
         }
 
         /// <summary>
         /// Removes the first frame from a message
         /// </summary>
         /// <returns></returns>
-        public Frame Pop()
+        public NetMQFrame Pop()
         {
-            Frame frame = m_frames[0];
+            NetMQFrame frame = m_frames[0];
             m_frames.RemoveAt(0);
 
             return frame;
         }
 
-        public void RemoveFrame(Frame frame)
+        public void RemoveFrame(NetMQFrame frame)
         {
             m_frames.Remove(frame);
         }
@@ -180,7 +179,7 @@ namespace NetMessage.Core
                 return "Message[<no frames>]";
             StringBuilder sb = new StringBuilder("Message[");
             bool first = true;
-            foreach (Frame f in m_frames)
+            foreach (NetMQFrame f in m_frames)
             {
                 if (!first)
                     sb.Append(",");

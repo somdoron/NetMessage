@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using NetMessage.Core;
 using NetMessage.Core.AsyncIO;
 using NetMessage.Core.Core;
+using NetMessage.Core.Transport;
 
-namespace NetMessage.Core.Transport.InProc
+namespace NetMessage.NetMQ.InProc
 {
-    public class BoundEndpoint : EndpointBase
+    public class BoundEndpoint : EndpointBase<NetMQMessage>
     {
         enum State
         {
@@ -14,9 +16,10 @@ namespace NetMessage.Core.Transport.InProc
         }        
 
         private State m_state;
-        private List<Session> m_sessions;        
+        private List<Session> m_sessions;
 
-        public BoundEndpoint(Endpoint endpoint) : base(endpoint)
+        public BoundEndpoint(Endpoint<NetMQMessage> endpoint)
+            : base(endpoint)
         {            
             m_state = State.Idle;
             m_sessions = new List<Session>();

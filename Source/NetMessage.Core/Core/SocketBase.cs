@@ -15,21 +15,21 @@ namespace NetMessage.Core.Core
         Ok, ShouldTryAgain
     }
 
-    public abstract class SocketBase : IDisposable
+    public abstract class SocketBase<T> : IDisposable where T : MessageBase
     {
         //public const int EventIn = 1;
         //public const int EventOut = 2;
 
-        private Socket m_socket;
+        private Socket<T> m_socket;
 
         /// <summary>
         /// Initialise the socket base class. 'hint' is the opaque value passed to the
         /// transport's 'Create' function.
         /// </summary>
         /// <param name="hint"></param>
-        public SocketBase(object hint)
+        protected SocketBase(object hint)
         {
-            m_socket = (Socket) hint;
+            m_socket = (Socket<T>) hint;
         }
 
         public virtual void Dispose()
@@ -68,16 +68,16 @@ namespace NetMessage.Core.Core
             return true;
         }        
 
-        protected internal abstract void Add(IPipe pipe);
-        protected internal abstract void Remove(IPipe pipe);
+        protected internal abstract void Add(IPipe<T> pipe);
+        protected internal abstract void Remove(IPipe<T> pipe);
 
-        protected internal abstract void In(IPipe pipe);
-        protected internal abstract void Out(IPipe pipe);
+        protected internal abstract void In(IPipe<T> pipe);
+        protected internal abstract void Out(IPipe<T> pipe);
 
         protected internal abstract SocketEvents Events { get; }
 
-        protected internal abstract SendReceiveResult Send(Message message);
-        protected internal abstract SendReceiveResult Receive(out Message message);
+        protected internal abstract SendReceiveResult Send(T message);
+        protected internal abstract SendReceiveResult Receive(out T message);
 
         protected internal abstract void SetOption(int option, object value);        
     }

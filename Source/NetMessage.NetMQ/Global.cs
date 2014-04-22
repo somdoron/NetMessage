@@ -3,23 +3,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.Core.Transport.InProc;
+using NetMessage.Core.Transport;
+using NetMessage.NetMQ.InProc;
 
-namespace NetMessage.Core
+namespace NetMessage.NetMQ
 {
     public static class Global
     {
-        private static Dictionary<string, Transport.Transport> s_transports;
+        private static Dictionary<string, Transport<NetMQMessage>> s_transports;
 
 
         static Global()
         {
-            s_transports = new Dictionary<string, Transport.Transport>();
+            s_transports = new Dictionary<string, Transport<NetMQMessage>>();
 
             RegisterTransport(new InProcTransport());
         }
 
-        public static void RegisterTransport(Transport.Transport transport)
+        public static void RegisterTransport(Transport<NetMQMessage> transport)
         {
             lock (s_transports)
             {
@@ -27,11 +28,11 @@ namespace NetMessage.Core
             }            
         }
 
-        public static Transport.Transport GetTransport(string name)
+        public static Transport<NetMQMessage> GetTransport(string name)
         {
             lock (s_transports)
             {
-                Transport.Transport transport;
+                Transport<NetMQMessage> transport;
 
                 s_transports.TryGetValue(name, out transport);
 

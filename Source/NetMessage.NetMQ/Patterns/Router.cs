@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using NetMessage.Core;
 using NetMessage.Core.Core;
-using NetMessage.Core.Patterns.Utils;
+using NetMessage.Core.Protocols.Utils;
 
-namespace NetMessage.Core.Patterns
+namespace NetMessage.NetMQ.Patterns
 {
-    public class Router : SocketBase
+    public class Router : SocketBase<NetMQMessage>
     {
-        public class RouterSocketType : SocketType
+        public class RouterSocketType : SocketType<NetMQMessage>
         {
             public RouterSocketType()
                 : base(SocketTypes.Router, SocketTypeFlags.None)
@@ -16,7 +17,7 @@ namespace NetMessage.Core.Patterns
 
             }
 
-            public override SocketBase Create(object hint)
+            public override SocketBase<NetMQMessage> Create(object hint)
             {
                 return new Router(hint);
             }
@@ -32,8 +33,8 @@ namespace NetMessage.Core.Patterns
         class Data
         {
             public UInt32 Key { get; set; }
-            public IPipe Pipe { get; set; }
-            public FairQueuing.Data FairQueueingData { get; set; }
+            public IPipe<NetMQMessage> Pipe { get; set; }
+            public FairQueuing<NetMQMessage>.Data FairQueueingData { get; set; }
 
             public bool HasOut { get; set; }
         }
@@ -41,13 +42,13 @@ namespace NetMessage.Core.Patterns
         private UInt32 m_nextKey;
         private Dictionary<uint, Data> m_outpipes;
 
-        private FairQueuing m_inpipes;
+        private FairQueuing<NetMQMessage> m_inpipes;
 
         public Router(object hint)
             : base(hint)
         {
             m_outpipes = new Dictionary<uint, Data>();
-            m_inpipes = new FairQueuing();
+            m_inpipes = new FairQueuing<NetMQMessage>();
 
             Random random = new Random();
 
@@ -61,9 +62,9 @@ namespace NetMessage.Core.Patterns
             m_inpipes = null;
             m_outpipes = null;
             base.Dispose();
-        }      
+        }
 
-        protected internal override void Add(IPipe pipe)
+        protected override void Add(IPipe<NetMQMessage> pipe)
         {
             int receivePriority = (int)pipe.GetOption(SocketOption.ReceivePriority);
 
@@ -78,7 +79,7 @@ namespace NetMessage.Core.Patterns
             m_nextKey++;
         }
 
-        protected internal override void Remove(IPipe pipe)
+        protected override void Remove(IPipe<NetMQMessage> pipe)
         {
             Data data = (Data)pipe.Data;
 
@@ -88,19 +89,19 @@ namespace NetMessage.Core.Patterns
             pipe.Data = null;
         }
 
-        protected internal override void In(IPipe pipe)
+        protected override void In(IPipe<NetMQMessage> pipe)
         {
             Data data = (Data)pipe.Data;
             m_inpipes.In(data.FairQueueingData);
         }
 
-        protected internal override void Out(IPipe pipe)
+        protected override void Out(IPipe<NetMQMessage> pipe)
         {
             Data data = (Data)pipe.Data;
             data.HasOut = true;
         }
 
-        protected internal override SocketEvents Events
+        protected override SocketEvents Events
         {
             get
             {
@@ -109,7 +110,7 @@ namespace NetMessage.Core.Patterns
             }
         }
 
-        protected internal override SendReceiveResult Send(Message message)
+        protected override SendReceiveResult Send(NetMQMessage message)
         {
             // If we have malformed message (prefix with no subsequent message)
             //  then just silently ignore it.
@@ -118,7 +119,7 @@ namespace NetMessage.Core.Patterns
                 return SendReceiveResult.Ok;
             }
 
-            Frame keyFrame = message.Pop();
+            NetMQFrame keyFrame = message.Pop();
 
             // We treat invalid peer ID as if the peer was non-existent.           
             if (keyFrame.MessageSize < sizeof(uint))
@@ -153,9 +154,9 @@ namespace NetMessage.Core.Patterns
             return SendReceiveResult.Ok;
         }
 
-        protected internal override SendReceiveResult Receive(out Message message)
-        {            
-            IPipe pipe;
+        protected override SendReceiveResult Receive(out NetMQMessage message)
+        {
+            IPipe<NetMQMessage> pipe;
 
             var result = m_inpipes.Receive(out message, out pipe);
 
@@ -176,7 +177,7 @@ namespace NetMessage.Core.Patterns
             return SendReceiveResult.Ok;
         }
 
-        protected internal override void SetOption(int option, object value)
+        protected override void SetOption(int option, object value)
         {
             throw new NotSupportedException();
         }

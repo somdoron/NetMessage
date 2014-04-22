@@ -4,11 +4,11 @@ using NetMessage.Core.Core;
 
 namespace NetMessage.Core.Transport
 {
-    public abstract class EndpointBase : StateMachine
+    public abstract class EndpointBase<T> : StateMachine where T: MessageBase
     {
-        private Endpoint m_endpoint;
+        private Endpoint<T> m_endpoint;
 
-        public EndpointBase(Endpoint endpoint) : base(endpoint.Context)
+        public EndpointBase(Endpoint<T> endpoint) : base(endpoint.Context)
         {
             m_endpoint = endpoint;
         }        
@@ -21,7 +21,7 @@ namespace NetMessage.Core.Transport
             }
         }
 
-        public Endpoint Endpoint
+        public Endpoint<T> Endpoint
         {
             get { return m_endpoint; }
         }

@@ -1,9 +1,11 @@
 ﻿using System;
 using NetMessage.Core.Core;
+using NetMessage.Core.Transport;
+using NetMessage.Core.Transport.Tcp;
 
-namespace NetMessage.Core.Transport.Tcp
+namespace NetMessage.NetMQ.Tcp
 {
-    public class TcpTransport : Transport
+    public class TcpTransport : Transport<NetMQMessage>
     {
         public override OptionSet GetOptionSet()
         {
@@ -20,12 +22,12 @@ namespace NetMessage.Core.Transport.Tcp
             
         }
 
-        public override EndpointBase Bind(object hint)
+        public override EndpointBase<NetMQMessage> Bind(object hint)
         {
-            return new BoundEndpoint((Endpoint)hint);
+            return new BoundEndpoint((Endpoint<NetMQMessage>)hint);
         }
 
-        public override EndpointBase Connect(object hint)
+        public override EndpointBase<NetMQMessage> Connect(object hint)
         {
             throw new NotImplementedException();
         }

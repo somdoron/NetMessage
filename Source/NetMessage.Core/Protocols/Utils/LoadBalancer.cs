@@ -1,22 +1,22 @@
 ﻿using NetMessage.Core.Core;
 
-namespace NetMessage.Core.Patterns.Utils
+namespace NetMessage.Core.Protocols.Utils
 {
-    public class FairQueuing
+    public class LoadBalancer<T> where T : MessageBase
     {
-        public class Data
+         public class Data
         {
-            public PriorityList.Data PriorityListData { get; set; }
+            public PriorityList<T>.Data PriorityListData { get; set; }
         }
 
-        private PriorityList m_priorityList;
+        private PriorityList<T> m_priorityList;
 
-        public FairQueuing()
+        public LoadBalancer()
         {
-            m_priorityList = new PriorityList();
+            m_priorityList = new PriorityList<T>();
         }
 
-        public bool CanReceive
+        public bool CanSend
         {
             get
             {
@@ -32,7 +32,7 @@ namespace NetMessage.Core.Patterns.Utils
             }
         }
 
-        public Data Add(IPipe pipe, int priority)
+        public Data Add(IPipe<T> pipe, int priority)
         {
             Data data = new Data();
             data.PriorityListData = m_priorityList.Add(pipe, priority);
@@ -45,33 +45,29 @@ namespace NetMessage.Core.Patterns.Utils
             m_priorityList.Remove(data.PriorityListData);
         }
 
-        public void In(Data data)
+        public void Out(Data data)
         {
             m_priorityList.Activate(data.PriorityListData);
         }
 
-        public SendReceiveResult Receive(out Message message)
+        public SendReceiveResult Send(T message)
         {
-            IPipe pipe;
-
-            return Receive(out message, out pipe);
+            IPipe<T> pipe;
+            return Send(message, out pipe);
         }
 
-        public SendReceiveResult Receive(out Message message, out IPipe pipe)
+        public SendReceiveResult Send(T message, out IPipe<T> pipe)
         {
             pipe = m_priorityList.Pipe;
 
             if (pipe == null)
-            {
-                message = null;
                 return SendReceiveResult.ShouldTryAgain;
-            }
-                
-            var pipeStatus = pipe.Receive(out message);
+
+            var pipeStatus = pipe.Send(message);
 
             m_priorityList.Advance(pipeStatus == PipeStatus.Release);
 
-            return SendReceiveResult.Ok;
+            return SendReceiveResult.Ok;            
         }
     }
 }

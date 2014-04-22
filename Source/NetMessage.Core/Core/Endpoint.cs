@@ -12,7 +12,7 @@ using NetMessage.Transport;
 
 namespace NetMessage.Core.Core
 {
-    public class Endpoint : StateMachine
+    public class Endpoint<T> : StateMachine where T: MessageBase
     {
         public const int SourceId = 10;
 
@@ -30,14 +30,14 @@ namespace NetMessage.Core.Core
         
 
         private State m_state;
-        private Socket m_socket;
+        private Socket<T> m_socket;
         private EndpointOptions m_options;
         private string m_address;
-        private EndpointBase m_endpointBase;
+        private EndpointBase<T> m_endpointBase;
 
         private Exception m_exception = null;
 
-        public Endpoint(Socket socket, int endpointId, Transport.Transport transport, bool bind,
+        public Endpoint(Socket<T> socket, int endpointId, Transport.Transport<T> transport, bool bind,
             string address)
             : base(SourceId, socket)
         {
@@ -68,7 +68,7 @@ namespace NetMessage.Core.Core
             }
         }
 
-        public Socket Socket
+        public Socket<T> Socket
         {
             get { return m_socket; }
         }

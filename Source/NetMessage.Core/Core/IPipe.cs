@@ -12,13 +12,13 @@ namespace NetMessage.Core.Core
         Release = 1,        
     }    
 
-    public interface IPipe
+    public interface IPipe<T> where T: MessageBase
     {
         object Data { get; set; }
 
-        PipeStatus Send(Message message);
+        PipeStatus Send(T message);
 
-        PipeStatus Receive(out Message message);
+        PipeStatus Receive(out T message);
 
         object GetOption(SocketOption option);
     }

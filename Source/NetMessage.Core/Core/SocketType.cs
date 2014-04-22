@@ -15,7 +15,7 @@ namespace NetMessage.Core.Core
         NoSend = 2,
     }
 
-    public abstract class SocketType
+    public abstract class SocketType<T> where T : MessageBase
     {        
         private int m_protocol;
         private SocketTypeFlags m_flags;
@@ -26,7 +26,7 @@ namespace NetMessage.Core.Core
             m_flags = flags;
         }
 
-        public abstract SocketBase Create(object hint);
+        public abstract SocketBase<T> Create(object hint);
 
         public abstract bool IsPeer(int socketType);
 

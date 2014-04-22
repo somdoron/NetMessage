@@ -1,20 +1,21 @@
 ﻿using System;
+using NetMessage.Core;
 using NetMessage.Core.Core;
-using NetMessage.Core.Patterns.Utils;
+using NetMessage.Core.Protocols.Utils;
 
-namespace NetMessage.Core.Patterns
+namespace NetMessage.NetMQ.Patterns
 {
-    public class Dealer : SocketBase
-    {        
-        public class DealerSocketType : SocketType
+    public class Dealer : SocketBase<NetMQMessage>
+    {
+        public class DealerSocketType : SocketType<NetMQMessage>
         {
             public DealerSocketType()
                 : base(SocketTypes.Dealer, SocketTypeFlags.None)
             {
-                
+
             }
 
-            public override SocketBase Create(object hint)
+            public override SocketBase<NetMQMessage> Create(object hint)
             {
                 return new Dealer(hint);
             }
@@ -33,17 +34,18 @@ namespace NetMessage.Core.Patterns
             {
             }
 
-            public FairQueuing.Data FairQueueingData { get; set; }
-            public LoadBalancer.Data LoadBalancerData { get; set; }            
+            public FairQueuing<NetMQMessage>.Data FairQueueingData { get; set; }
+            public LoadBalancer<NetMQMessage>.Data LoadBalancerData { get; set; }
         }
 
-        private FairQueuing m_fairQueueing;
-        private LoadBalancer m_loadBalancer;    
+        private FairQueuing<NetMQMessage> m_fairQueueing;
+        private LoadBalancer<NetMQMessage> m_loadBalancer;
 
-        public Dealer(object hint) : base(hint)
-        {            
-            m_loadBalancer = new LoadBalancer();
-            m_fairQueueing = new FairQueuing();
+        public Dealer(object hint)
+            : base(hint)
+        {
+            m_loadBalancer = new LoadBalancer<NetMQMessage>();
+            m_fairQueueing = new FairQueuing<NetMQMessage>();
         }
 
         public override void Dispose()
@@ -51,12 +53,12 @@ namespace NetMessage.Core.Patterns
             m_loadBalancer = null;
             m_fairQueueing = null;
             base.Dispose();
-        }     
+        }
 
-        protected internal override void Add(IPipe pipe)
-        {            
+        protected override void Add(IPipe<NetMQMessage> pipe)
+        {
             int sendPriority = (int)pipe.GetOption(SocketOption.SendPriority);
-            int receivePriority = (int)pipe.GetOption( SocketOption.ReceivePriority);
+            int receivePriority = (int)pipe.GetOption(SocketOption.ReceivePriority);
 
             Data data = new Data();
             pipe.Data = data;
@@ -65,29 +67,29 @@ namespace NetMessage.Core.Patterns
             data.FairQueueingData = m_fairQueueing.Add(pipe, receivePriority);
         }
 
-        protected internal override void Remove(IPipe pipe)
+        protected override void Remove(IPipe<NetMQMessage> pipe)
         {
             Data data = (Data)pipe.Data;
 
             m_loadBalancer.Remove(data.LoadBalancerData);
-            m_fairQueueing.Remove(data.FairQueueingData);            
+            m_fairQueueing.Remove(data.FairQueueingData);
 
             pipe.Data = null;
         }
 
-        protected internal override void In(IPipe pipe)
+        protected override void In(IPipe<NetMQMessage> pipe)
         {
             Data data = (Data)pipe.Data;
             m_fairQueueing.In(data.FairQueueingData);
         }
 
-        protected internal override void Out(IPipe pipe)
+        protected override void Out(IPipe<NetMQMessage> pipe)
         {
             Data data = (Data)pipe.Data;
             m_loadBalancer.Out(data.LoadBalancerData);
         }
 
-        protected internal override SocketEvents Events
+        protected override SocketEvents Events
         {
             get
             {
@@ -96,19 +98,19 @@ namespace NetMessage.Core.Patterns
             }
         }
 
-        protected internal override SendReceiveResult Send(Message message)
+        protected override SendReceiveResult Send(NetMQMessage message)
         {
-            return m_loadBalancer.Send(message);            
+            return m_loadBalancer.Send(message);
         }
 
-        protected internal override SendReceiveResult Receive(out Message message)
+        protected override SendReceiveResult Receive(out NetMQMessage message)
         {
-            return m_fairQueueing.Receive(out message);            
+            return m_fairQueueing.Receive(out message);
         }
 
-        protected internal override void SetOption(int option, object value)
+        protected override void SetOption(int option, object value)
         {
             throw new NotSupportedException();
-        }      
+        }
     }
 }
