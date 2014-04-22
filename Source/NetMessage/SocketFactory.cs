@@ -4,9 +4,9 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.Patterns;
+using NetMessage.Core.Patterns;
 
-namespace NetMessage
+namespace NetMessage.Core
 {
     public static class SocketFactory
     {

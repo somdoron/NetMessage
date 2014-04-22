@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NetMessage.Core
+namespace NetMessage.Core.Core
 {    
     public enum PipeStatus
     {        

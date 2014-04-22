@@ -1,13 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using NetMessage.AsyncIO;
-using NetMessage.Core;
+using NetMessage.Core.AsyncIO;
+using NetMessage.Core.Core;
 
-namespace NetMessage.Transport
+namespace NetMessage.Core.Transport
 {
     public abstract class EndpointBase : StateMachine
     {

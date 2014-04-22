@@ -1,17 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
-using NetMessage.AsyncIO;
-using NetMessage.Core;
+using NetMessage.Core.AsyncIO;
+using NetMessage.Core.Core;
 using NetMessage.Transport.Utils;
-using NetSocket = System.Net.Sockets.Socket;
 using SocketType = System.Net.Sockets.SocketType;
 
-namespace NetMessage.Transport.Tcp
+namespace NetMessage.Core.Transport.Tcp
 {
     public class BoundEndpoint : EndpointBase
     {
@@ -26,9 +21,9 @@ namespace NetMessage.Transport.Tcp
 
         private State m_state;
 
-        private NetSocket m_netSocket;
+        private USocket m_usocket;
 
-        private NetSocket m_acceptedConnection;
+        private USocket m_acceptedConnection;
 
         private List<AcceptedConnection> m_connections;
 
@@ -36,28 +31,27 @@ namespace NetMessage.Transport.Tcp
             : base(endpoint)
         {
             string address = endpoint.Address;
-            
-            bool ip4Only = (bool)endpoint.GetOption(SocketOption.IPV4Only);
+
+            bool ipV4Only = (bool)endpoint.GetOption(SocketOption.IPV4Only);
 
             // just to check if valid address
             AddressUtility.ResolveAddress(Address, ipV4Only);
 
-            m_state = StateMachine.State.Idle;
+            m_state = State.Idle;
 
             m_acceptedConnection = null;
             m_connections = new List<AcceptedConnection>();
 
-            m_netSocket = new NetSocket(
-                ip4Only ? AddressFamily.InterNetwork :  AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+            m_usocket = new USocket(this);
 
             StartStateMachine();
         }
 
         public override void Dispose()
         {
-            Debug.Assert(m_state == StateMachine.State.Idle);
+            Debug.Assert(m_state == State.Idle);
 
-            m_netSocket.Dispose();
+            m_usocket.Dispose();
             base.Dispose();
         }
 
@@ -83,7 +77,7 @@ namespace NetMessage.Transport.Tcp
 
                 m_acceptedConnection.Dispose();
                 m_acceptedConnection = null;
-                m_netSocket.Dispose();
+                m_usocket.Dispose();
 
                 if (m_connections.Count > 0)
                 {
@@ -104,7 +98,7 @@ namespace NetMessage.Transport.Tcp
             else if (m_state == State.StoppingAcceptedSockets)
             {
                 AcceptedConnection connection= (AcceptedConnection)source;
-                m_connections.Remove(connection)
+                m_connections.Remove(connection);
                 connection.Dispose();
 
                 if (m_connections.Count == 0)
@@ -123,13 +117,13 @@ namespace NetMessage.Transport.Tcp
 
         private void StartListening()
         {            
-            bool ipV4Only = GetOption(SocketOption.IPV4Only);
+            bool ipV4Only = (bool)GetOption(SocketOption.IPV4Only);
             var endpoint = AddressUtility.ResolveAddress(Address, ipV4Only);
 
-            m_netSocket.Bind(endpoint);
+            m_usocket.Bind(endpoint);
 
             // TODO: the backlog should be an option
-            m_netSocket.Listen(100);            
+            m_usocket.Listen(100);            
         }
 
         private void StartAccepting()

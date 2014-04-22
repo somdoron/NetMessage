@@ -5,10 +5,10 @@ using System.Linq;
 using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.AsyncIO;
+using NetMessage.Core.AsyncIO;
 using NetMessage.Transport;
 
-namespace NetMessage.Core
+namespace NetMessage.Core.Core
 {
     public enum SendReceiveResult
     {

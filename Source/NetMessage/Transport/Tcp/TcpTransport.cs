@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using NetMessage.Core.Core;
 
-namespace NetMessage.Transport.Tcp
+namespace NetMessage.Core.Transport.Tcp
 {
     public class TcpTransport : Transport
     {
@@ -25,7 +22,7 @@ namespace NetMessage.Transport.Tcp
 
         public override EndpointBase Bind(object hint)
         {
-            
+            return new BoundEndpoint((Endpoint)hint);
         }
 
         public override EndpointBase Connect(object hint)

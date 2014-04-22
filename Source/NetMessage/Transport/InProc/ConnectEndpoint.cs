@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NetMessage.AsyncIO;
-using NetMessage.Core;
+using NetMessage.Core.AsyncIO;
+using NetMessage.Core.Core;
 
-namespace NetMessage.Transport.InProc
+namespace NetMessage.Core.Transport.InProc
 {
     public class ConnectEndpoint : EndpointBase
     {

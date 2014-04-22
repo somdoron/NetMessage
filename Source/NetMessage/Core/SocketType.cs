@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core;
 
-namespace NetMessage.Core
+namespace NetMessage.Core.Core
 {
     [Flags]
     public enum SocketTypeFlags

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NetMessage
+namespace NetMessage.Core
 {
     public class Message : IEnumerable<Frame>
     {

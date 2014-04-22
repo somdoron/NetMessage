@@ -1,14 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text;
-using System.Threading.Tasks;
-using NetMessage.AsyncIO;
-using NetMessage.Core;
+using NetMessage.Core.AsyncIO;
+using NetMessage.Core.Core;
 
-namespace NetMessage.Transport.InProc
+namespace NetMessage.Core.Transport.InProc
 {
     public class BoundEndpoint : EndpointBase
     {
@@ -55,7 +51,7 @@ namespace NetMessage.Transport.InProc
 
         protected override void Shutdown(int sourceId, int type, StateMachine source)
         {
-            if (sourceId == StateMachine.ActionSourceId && type == StopAction)
+            if (sourceId == StateMachine.ActionSourceId && type == StateMachine.StopAction)
             {
                 InProcSystem.Instance.Unbind(this);                               
 

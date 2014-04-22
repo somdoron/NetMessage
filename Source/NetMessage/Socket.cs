@@ -5,12 +5,14 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using NetMessage.AsyncIO;
-using NetMessage.Transport;
-using NetMessage.Utils;
+using NetMessage.Core.AsyncIO;
+using NetMessage.Core.Core;
+using NetMessage.Core.Transport;
+using NetMessage.Core.Utils;
 using NetMessage.Core;
+using NetMessage.Transport;
 
-namespace NetMessage
+namespace NetMessage.Core
 {
     public class Socket : StateMachine
     {

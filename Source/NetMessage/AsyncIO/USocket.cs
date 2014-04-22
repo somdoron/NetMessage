@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NetSocket = System.Net.Sockets.Socket;
 
-namespace NetMessage.AsyncIO
+namespace NetMessage.Core.AsyncIO
 {
     public class USocket : StateMachine, IDisposable
     {
@@ -81,11 +81,7 @@ namespace NetMessage.AsyncIO
             m_state = State.Idle;
             
             m_in = new AsyncOperation(InSourceId, this);
-            m_out = new AsyncOperation(OutSourceId, this);
-
-            m_domain = -1;
-            m_type = -1;
-            m_protocol = -1;
+            m_out = new AsyncOperation(OutSourceId, this);            
 
             m_establishedEvent = new StateMachineEvent();
             m_sendEvent = new StateMachineEvent();
@@ -96,10 +92,10 @@ namespace NetMessage.AsyncIO
 
         public override void Dispose()
         {
-            Debug.Assert(m_state == StateMachine.State.Idle);
+            Debug.Assert(m_state == State.Idle);
 
-            m_inEventArgs.Dispose();
-            m_outEventArgs.Dispose();
+            m_in.Dispose();
+            m_out.Dispose();
 
             base.Dispose();
         }
@@ -108,7 +104,7 @@ namespace NetMessage.AsyncIO
         {
             get
             {
-                
+                return true;
             }
         }
 
@@ -323,26 +319,75 @@ namespace NetMessage.AsyncIO
             }
         }
 
-        public void SwapOwner(StateMachine owner)
+        protected override void Shutdown(int sourceId, int type, StateMachine source)
         {
+            if (sourceId == StateMachine.ActionSourceId && type == StateMachine.StopAction)
+            {
+                // Socket in ACCEPTING state cannot be closed.
+                // Stop the socket being accepted first. 
+                Debug.Assert(m_state != State.Accepting);
 
-        }                              
-       
+                if (m_state == State.Idle)
+                {
+                    // the socket already idle, do nothing   
+                }
+                else if (m_state == State.Done)
+                {
+                    CompleteShutdown(false);
 
-        
+                }
+                else if (m_state == State.Starting || m_state == State.Accepted || m_state == State.Listening)
+                {
+                    CompleteShutdown(true);                
+                }
+                else if (m_state == State.BeingAccepted)
+                {
+                    m_acceptSocket.Action(CancelAction);
+                    m_state = State.StoppingAccept;
+                }
+                else if (m_state == State.CancellingIO)
+                {
+                    m_state = State.Stopping;
+                }
+            }
+            else if (m_state == State.StoppingAccept)
+            {
+                Debug.Assert(sourceId == StateMachine.ActionSourceId  && type == DoneAction);
+            }
+            else if (m_state == State.Stopping)
+            {
+                
+            }
+        }
 
-      
+        private void CompleteShutdown(bool closeSocket)
+        {
+            if (closeSocket)
+            {
+                try
+                {
+                    m_socket.Close();
+                }
+                catch (SocketException ex)
+                {
+                    Debug.Assert(false, ex.ToString());
+                }
+            }
 
-       
+            m_state = State.Idle;
+            Stopped(StoppedEvent);
+        }            
 
         protected override void Handle(int sourceId, int type, StateMachine source)
         {
             throw new NotImplementedException();
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        
+
+        public void SwapOwner(StateMachine owner)
         {
-            throw new NotImplementedException();
-        }
+
+        }              
     }
 }

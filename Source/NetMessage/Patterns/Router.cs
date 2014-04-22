@@ -1,14 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.SqlServer.Server;
-using NetMessage.Core;
-using NetMessage.Patterns.Utils;
+using NetMessage.Core.Core;
+using NetMessage.Core.Patterns.Utils;
 
-namespace NetMessage.Patterns
+namespace NetMessage.Core.Patterns
 {
     public class Router : SocketBase
     {

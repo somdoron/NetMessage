@@ -6,10 +6,11 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.AsyncIO;
+using NetMessage.Core.AsyncIO;
+using NetMessage.Core.Transport;
 using NetMessage.Transport;
 
-namespace NetMessage.Core
+namespace NetMessage.Core.Core
 {
     public class Endpoint : StateMachine
     {

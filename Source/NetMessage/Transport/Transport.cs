@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NetMessage.Core;
 
-namespace NetMessage.Transport
+namespace NetMessage.Core.Transport
 {
     public abstract class Transport : IDisposable
     {

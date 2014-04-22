@@ -1,7 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage", "NetMessage\NetMessage.csproj", "{28919040-A12D-4B4E-A478-E149FE99F0CC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.Core", "NetMessage\NetMessage.Core.csproj", "{28919040-A12D-4B4E-A478-E149FE99F0CC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ", "NetMessage.NetMQ\NetMessage.NetMQ.csproj", "{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +15,10 @@ Global
 		{28919040-A12D-4B4E-A478-E149FE99F0CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{28919040-A12D-4B4E-A478-E149FE99F0CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{28919040-A12D-4B4E-A478-E149FE99F0CC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace NetMessage
+namespace NetMessage.Core
 {
     public class Frame : IEquatable<Frame>, IEnumerable<byte>
     {

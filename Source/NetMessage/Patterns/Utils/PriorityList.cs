@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NetMessage.Core;
+using NetMessage.Core.Core;
 
-namespace NetMessage.Patterns.Utils
+namespace NetMessage.Core.Patterns.Utils
 {
     public class PriorityList
     {        

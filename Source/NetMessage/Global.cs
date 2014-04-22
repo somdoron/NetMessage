@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.Transport.InProc;
+using NetMessage.Core.Transport.InProc;
 
-namespace NetMessage
+namespace NetMessage.Core
 {
     public static class Global
     {

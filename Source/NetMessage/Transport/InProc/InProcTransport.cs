@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NetMessage.Core;
+﻿using NetMessage.Core.Core;
 
-namespace NetMessage.Transport.InProc
+namespace NetMessage.Core.Transport.InProc
 {
     public class InProcTransport : Transport
     {
