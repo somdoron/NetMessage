@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -26,7 +27,7 @@ namespace NetMessage.Core.AsyncIO
 
         enum State
         {
-            Idle=1,
+            Idle = 1,
             Starting,
             BeingAccepted,
             Accepted,
@@ -67,7 +68,7 @@ namespace NetMessage.Core.AsyncIO
 
         private NetSocket m_socket;
         private AsyncOperation m_in;
-        private AsyncOperation m_out;        
+        private AsyncOperation m_out;
 
         private StateMachineEvent m_establishedEvent;
         private StateMachineEvent m_sendEvent;
@@ -76,12 +77,13 @@ namespace NetMessage.Core.AsyncIO
 
         private USocket m_acceptSocket;
 
-        public USocket(StateMachine owner) : base(SourceId, owner)
-        {    
+        public USocket(StateMachine owner)
+            : base(SourceId, owner)
+        {
             m_state = State.Idle;
-            
+
             m_in = new AsyncOperation(InSourceId, this);
-            m_out = new AsyncOperation(OutSourceId, this);            
+            m_out = new AsyncOperation(OutSourceId, this);
 
             m_establishedEvent = new StateMachineEvent();
             m_sendEvent = new StateMachineEvent();
@@ -97,6 +99,18 @@ namespace NetMessage.Core.AsyncIO
             m_in.Dispose();
             m_out.Dispose();
 
+            if (m_socket != null)
+            {
+                try
+                {
+                    m_socket.Dispose();
+                }
+                catch
+                {
+                                        
+                }
+            }
+
             base.Dispose();
         }
 
@@ -108,7 +122,7 @@ namespace NetMessage.Core.AsyncIO
             }
         }
 
-        public void Start(AddressFamily  addressFamily,SocketType socketType , ProtocolType protocolType)
+        public void Start(AddressFamily addressFamily, SocketType socketType, ProtocolType protocolType)
         {
             m_socket = new NetSocket(addressFamily, socketType, protocolType);
             base.StartStateMachine();
@@ -123,7 +137,7 @@ namespace NetMessage.Core.AsyncIO
         {
             Debug.Assert(m_state == State.Starting || m_state == State.Accepted);
 
-            m_socket.SetSocketOption(level,name,value);
+            m_socket.SetSocketOption(level, name, value);
         }
 
         public void Bind(EndPoint endPoint)
@@ -153,14 +167,14 @@ namespace NetMessage.Core.AsyncIO
         public void Accept(USocket listener)
         {
             Start(listener.m_socket.AddressFamily, listener.m_socket.SocketType, listener.m_socket.ProtocolType);
-            
+
             listener.Action(AcceptAction);
             Action(BeingAcceptedAction);
 
             m_in.SocketAsyncEventArgs.AcceptSocket = m_socket;
 
             SocketError socketError;
-            
+
             try
             {
                 bool isPending = listener.m_socket.AcceptAsync(m_in.SocketAsyncEventArgs);
@@ -182,7 +196,7 @@ namespace NetMessage.Core.AsyncIO
             if (socketError == SocketError.Success)
             {
                 listener.Action(DoneAction);
-                Action(DoneAction);                
+                Action(DoneAction);
             }
             else if (socketError != SocketError.IOPending)
             {
@@ -192,8 +206,8 @@ namespace NetMessage.Core.AsyncIO
             else
             {
                 m_acceptSocket = listener;
-                listener.m_acceptSocket = this;    
-            }            
+                listener.m_acceptSocket = this;
+            }
         }
 
         /// <summary>
@@ -216,7 +230,7 @@ namespace NetMessage.Core.AsyncIO
 
             Action(ConnectAction);
 
-            m_out.SocketAsyncEventArgs.RemoteEndPoint = endpoint;           
+            m_out.SocketAsyncEventArgs.RemoteEndPoint = endpoint;
 
             SocketError socketError;
 
@@ -226,7 +240,7 @@ namespace NetMessage.Core.AsyncIO
 
                 if (isPending)
                 {
-                    socketError = SocketError.IOPending;                                       
+                    socketError = SocketError.IOPending;
                 }
                 else
                 {
@@ -240,12 +254,12 @@ namespace NetMessage.Core.AsyncIO
 
             if (socketError == SocketError.Success)
             {
-                Action(DoneAction);                
+                Action(DoneAction);
             }
             else if (socketError != SocketError.IOPending)
             {
                 Action(ErrorAction);
-            }                                  
+            }
         }
 
         public void Send(ArraySegment<byte>[] items)
@@ -283,7 +297,7 @@ namespace NetMessage.Core.AsyncIO
 
             if (socketError != SocketError.Success && socketError != SocketError.IOPending)
             {
-                Action(ErrorAction);   
+                Action(ErrorAction);
             }
         }
 
@@ -333,61 +347,349 @@ namespace NetMessage.Core.AsyncIO
                 }
                 else if (m_state == State.Done)
                 {
-                    CompleteShutdown(false);
-
+                    m_state = State.Idle;
+                    Stopped(StoppedEvent);
                 }
                 else if (m_state == State.Starting || m_state == State.Accepted || m_state == State.Listening)
                 {
-                    CompleteShutdown(true);                
+                    if (CloseSocket())
+                    {
+                        m_state = State.Idle;
+                        Stopped(StoppedEvent);
+                    }
+                    else
+                    {
+                        m_state = State.Stopping;
+                    }
                 }
                 else if (m_state == State.BeingAccepted)
                 {
                     m_acceptSocket.Action(CancelAction);
+                    
+                    // will close the socket
+                    CloseSocket();
+
                     m_state = State.StoppingAccept;
                 }
                 else if (m_state == State.CancellingIO)
                 {
                     m_state = State.Stopping;
                 }
+                else
+                {
+                    // Notify our parent that pipe socket is shutting down
+                    base.Raise(m_errorEvent, ShutdownEvent);
+
+                    //  In all remaining states we'll simply cancel all overlapped
+                    //   operations.                                        
+                    if (CloseSocket())
+                    {
+                        m_state = State.Idle;
+                        Stopped(StoppedEvent);
+                    }
+                    else
+                    {
+                        m_state = State.Stopping;
+                    }
+                }
             }
             else if (m_state == State.StoppingAccept)
             {
-                Debug.Assert(sourceId == StateMachine.ActionSourceId  && type == DoneAction);
+                Debug.Assert(sourceId == StateMachine.ActionSourceId && type == DoneAction);
+
+                m_state = State.Idle;
+                Stopped(StoppedEvent);
             }
             else if (m_state == State.Stopping)
             {
-                
+                if (m_in.IsIdle && m_out.IsIdle)
+                {
+                    m_state = State.Idle;
+                    Stopped(StoppedEvent);
+                }
             }
         }
 
-        private void CompleteShutdown(bool closeSocket)
+        private bool CloseSocket()
         {
-            if (closeSocket)
+            try
             {
-                try
-                {
-                    m_socket.Close();
-                }
-                catch (SocketException ex)
-                {
-                    Debug.Assert(false, ex.ToString());
-                }
+                // the only way to cancel async operation in .net is to close the socket
+                m_socket.Close();
+            }
+            catch (SocketException ex)
+            {
+                Debug.Assert(false, ex.ToString());
             }
 
-            m_state = State.Idle;
-            Stopped(StoppedEvent);
-        }            
+            return m_in.IsIdle && m_out.IsIdle;
+        }
 
         protected override void Handle(int sourceId, int type, StateMachine source)
         {
-            throw new NotImplementedException();
+            // TODO: handle all bad actions, state, source
+
+            switch (m_state)
+            {
+                case State.Idle:
+                    switch (sourceId)
+                    {
+                        case StateMachine.ActionSourceId:
+                            switch (type)
+                            {
+                                case StateMachine.StartAction:
+                                    m_state = State.Starting;
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+                case State.Starting:
+                    switch (sourceId)
+                    {
+                        case StateMachine.ActionSourceId:
+                            switch (type)
+                            {
+                                case ListenAction:
+                                    m_state = State.Listening;
+                                    break;
+                                case ConnectAction:
+                                    m_state = State.Connecting;
+                                    break;
+                                case BeingAcceptedAction:
+                                    m_state = State.BeingAccepted;
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+                case State.BeingAccepted:
+                    switch (sourceId)
+                    {
+                        case StateMachine.ActionSourceId:
+                            switch (type)
+                            {
+                                case DoneAction:
+                                    m_state = State.Accepted;
+                                    Raise(m_establishedEvent, AcceptedEvent);
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+                case State.Accepted:
+                    switch (sourceId)
+                    {
+                        case StateMachine.ActionSourceId:
+                            switch (type)
+                            {
+                                case ActivateAction:
+                                    m_state = State.Active;
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+
+                case State.Connecting:
+                    switch (sourceId)
+                    {
+                        case StateMachine.ActionSourceId:
+                            switch (type)
+                            {
+                                case DoneAction:
+                                    m_state = State.Active;
+                                    Raise(m_establishedEvent, ConnectedEvent);
+                                    break;
+                                case ErrorAction:
+                                    CloseAndDisposeSocket();
+                                    m_state = State.Done;
+                                    Raise(m_errorEvent, ErrorEvent);
+                                    break;
+                            }
+                            break;
+                        case OutSourceId:
+                            switch (type)
+                            {
+                                case AsyncOperation.DoneEvent:
+                                    m_state = State.Active;
+                                    Raise(m_establishedEvent, ConnectedEvent);
+                                    break;
+                                case AsyncOperation.ErrorEvent:
+                                    CloseAndDisposeSocket();
+                                    m_state = State.Done;
+                                    Raise(m_errorEvent, ErrorEvent);
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+                case State.Active:
+                    switch (sourceId)
+                    {
+                        case InSourceId:
+                            switch (type)
+                            {
+                                case AsyncOperation.DoneEvent:
+                                    Raise(m_receivedEvent, ReceivedEvent);
+                                    break;
+                                case AsyncOperation.ErrorEvent:
+                                    if (CloseSocket())
+                                    {
+                                        Raise(m_errorEvent, ShutdownEvent);
+                                        m_state = State.Done;
+                                    }
+                                    else
+                                    {
+                                        m_state = State.CancellingIO;
+                                    }
+                                    break;
+                            }
+                            break;
+                        case OutSourceId:
+                            switch (type)
+                            {
+                                case AsyncOperation.DoneEvent:
+                                    Raise(m_sendEvent, SentEvent);
+                                    break;
+                                case AsyncOperation.ErrorEvent:
+                                    if (CloseSocket())
+                                    {
+                                        Raise(m_errorEvent, ShutdownEvent);
+                                        m_state = State.Done;
+                                    }
+                                    else
+                                    {
+                                        m_state = State.CancellingIO;
+                                    }
+                                    break;
+                            }
+                            break;
+                        case StateMachine.ActionSourceId:
+                            switch (type)
+                            {
+                                case ErrorAction:
+                                    if (CloseSocket())
+                                    {
+                                        Raise(m_errorEvent, ShutdownEvent);
+                                        m_state = State.Done;
+                                    }
+                                    else
+                                    {
+                                        m_state = State.CancellingIO;
+                                    }
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+                case State.CancellingIO:
+                    switch (sourceId)
+                    {
+                        case InSourceId:
+                        case OutSourceId:
+                            if (m_in.IsIdle && m_out.IsIdle)
+                            {
+                                m_state = State.Done;
+                            }
+                            break;
+                    }
+                    break;
+                case State.Done:
+                    // TODO: throw exception bad sourceb
+                    break;
+                case State.Listening:
+                    switch (sourceId)
+                    {
+                        case StateMachine.ActionSourceId:
+                            switch (type)
+                            {
+                                case AcceptAction:
+                                    m_state = State.Accepting;
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+
+                case State.Accepting:
+                    switch (sourceId)
+                    {
+                        case StateMachine.ActionSourceId:
+                            switch (type)
+                            {
+                                case DoneAction:
+                                    m_state = State.Listening;
+                                    break;
+                                case CancelAction:                                    
+                                    m_state = State.Cancelling;
+                                    break;
+                            }
+                            break;
+                        case InSourceId:
+                            switch (type)
+                            {
+                                case AsyncOperation.DoneEvent:
+                                    m_acceptSocket.m_state = State.Accepted;
+
+                                    m_acceptSocket.Raise(m_establishedEvent, AcceptedEvent);
+
+                                    m_acceptSocket.m_acceptSocket = null;
+                                    m_acceptSocket = null;
+
+                                    m_state = State.Listening;
+
+                                    break;
+                            }
+                            break;
+
+                    }
+                    break;
+                case State.Cancelling:
+                    switch (sourceId)
+                    {
+                        case InSourceId:
+
+                            switch (type)
+                            {
+                                case AsyncOperation.DoneEvent:
+                                case AsyncOperation.ErrorEvent:
+                                    m_state = State.Listening;
+                                    m_acceptSocket.Action(DoneAction);
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+            }
         }
 
-        
+        private void CloseAndDisposeSocket()
+        {
+            try
+            {
+                m_socket.Close();
+            }
+            catch (SocketException ex)
+            {
+                Debug.Assert(false, ex.ToString());
+            }
+
+            try
+            {
+                m_socket.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Debug.Assert(false, ex.ToString());
+            }
+
+            m_socket = null;
+        }
 
         public void SwapOwner(StateMachine owner)
         {
 
-        }              
+        }
     }
 }

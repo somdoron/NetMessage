@@ -10,8 +10,9 @@ namespace NetMessage.Core.AsyncIO
 {
     public class AsyncOperation : StateMachine
     {
-        public int ErrorEvent = 2;
-        public int DoneEvent = 2;
+        public const int DoneEvent = 1;
+        public const int ErrorEvent = 2;
+        
 
         enum State
         {
@@ -67,6 +68,8 @@ namespace NetMessage.Core.AsyncIO
                 {
                     action = ErrorEvent;
                 }
+
+                m_state = State.Idle;
 
                 Owner.Feed(SourceId, action, this);
             }
