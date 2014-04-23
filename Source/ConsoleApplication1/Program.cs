@@ -16,30 +16,19 @@ namespace ConsoleApplication1
             {
                 server.Bind("tcp://*:5555");
 
-                using (NetMQSocket client = SocketFactory.CreateDealer())
+                while (true)
                 {
-                    client.Connect("tcp://localhost:5555");                    
+                    NetMQMessage message = server.ReceiveMessage();
 
-                    NetMQMessage message = new NetMQMessage();
+                    Console.WriteLine(message[0].ConvertToString());
 
-                    message.Append("Hello");
+                    NetMQMessage replyMessage = new NetMQMessage();
+                    replyMessage.Append("Reply !!!!");
 
-                    client.SendMessage(message);
-
-                    Console.WriteLine("Message sent");
-
-                    var rMessage = server.ReceiveMessage();
-
-                    Console.WriteLine("Message received");
-
-                    Console.WriteLine(rMessage[0].ConvertToString());
-                    
-                    Console.ReadLine();
+                    server.SendMessage(replyMessage);
                 }
             }
 
-            Console.WriteLine("Done");
-            Console.ReadLine();
         }
     }
 }

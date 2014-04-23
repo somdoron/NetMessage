@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>NetMQ</id>
+    <version>3.3.0.8</version>
+    <title>NetMQ</title>
+    <authors>NetMQ</authors>
+    <owners>NetMQ</owners>
+    <projectUrl>https://github.com/zeromq/netmq</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>NetMQ is 100% C# native port of ZeroMQ. NetMQ is lightweight high performance messaging library. This current version is still in alpha phase and not recommended for production usage yet</description>
+    <releaseNotes>* NetMQ Secure Channel (SSL/DTLS over NetMQ)
+      * NetMQ Scheduler for TPL
+      * Bug fixes
+      
+      From version 3.3.0.7 NetMQ is using Big Endian by default (old versions used Little Endian) to be compitable with ZeroMQ,
+      In order to be compitable with older NetMQ versions you can set the Endian to Little on the Socket.Options.Endian.
+      You cannot support older versions of NetMQ and ZeroMQ with the same socket.</releaseNotes>
+    <copyright>Copyright 2013</copyright>
+    <tags>ZeroMQ 0MQ CLRZMQ NetMQ Messaging ZMQ transport distributed</tags>
+  </metadata>
+</package>

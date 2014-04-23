@@ -4,15 +4,16 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{79518F6F-ACC6-488D-80AB-CB554017A131}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NetMessage.NetMQ</RootNamespace>
-    <AssemblyName>NetMessage.NetMQ</AssemblyName>
+    <RootNamespace>ConsoleApplication2</RootNamespace>
+    <AssemblyName>ConsoleApplication2</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,6 +23,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -30,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="NetMQ">
+      <HintPath>..\packages\NetMQ.3.3.0.8\lib\net40\NetMQ.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -39,38 +44,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Frame.cs" />
-    <Compile Include="Global.cs" />
-    <Compile Include="InProc\BoundEndpoint.cs" />
-    <Compile Include="InProc\ConnectEndpoint.cs" />
-    <Compile Include="InProc\InProcSystem.cs" />
-    <Compile Include="InProc\InProcTransport.cs" />
-    <Compile Include="InProc\Session.cs" />
-    <Compile Include="Message.cs" />
-    <Compile Include="NetMQSocket.cs" />
-    <Compile Include="Patterns\Dealer.cs" />
-    <Compile Include="Patterns\Router.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SocketFactory.cs" />
-    <Compile Include="SocketTypes.cs" />
-    <Compile Include="Tcp\AcceptConnection.cs" />
-    <Compile Include="Tcp\BoundEndpoint.cs" />
-    <Compile Include="Tcp\ConnectEndpoint.cs" />
-    <Compile Include="Tcp\DecoderBase.cs" />
-    <Compile Include="Tcp\DecoderV2.cs" />
-    <Compile Include="Tcp\EncoderV2.cs" />
-    <Compile Include="Tcp\EncoderBase.cs" />
-    <Compile Include="Tcp\HandshakeBase.cs" />
-    <Compile Include="Tcp\Session.cs" />
-    <Compile Include="Tcp\TcpOptionSet.cs" />
-    <Compile Include="Tcp\TcpTransport.cs" />
-    <Compile Include="Tcp\ZMTPHandshake.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NetMessage.Core\NetMessage.Core.csproj">
-      <Project>{28919040-a12d-4b4e-a478-e149fe99f0cc}</Project>
-      <Name>NetMessage.Core</Name>
-    </ProjectReference>
+    <None Include="App.config" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

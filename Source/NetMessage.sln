@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.Core", "NetMessa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApplication1", "ConsoleApplication1\ConsoleApplication1.csproj", "{7C0CD2D6-FC4D-4CD7-96FC-DF13628D9307}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApplication2", "ConsoleApplication2\ConsoleApplication2.csproj", "{79518F6F-ACC6-488D-80AB-CB554017A131}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,6 +27,10 @@ Global
 		{7C0CD2D6-FC4D-4CD7-96FC-DF13628D9307}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7C0CD2D6-FC4D-4CD7-96FC-DF13628D9307}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7C0CD2D6-FC4D-4CD7-96FC-DF13628D9307}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79518F6F-ACC6-488D-80AB-CB554017A131}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79518F6F-ACC6-488D-80AB-CB554017A131}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79518F6F-ACC6-488D-80AB-CB554017A131}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79518F6F-ACC6-488D-80AB-CB554017A131}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -13,14 +13,8 @@ namespace NetMessage.NetMQ.Tcp
     /// First implementation of ZMTP v2 decoder, not very fast (multiple receive calls for each frame)
     /// Doesn't support message size larger than 8192
     /// </summary>
-    public class DecodeV2 : StateMachine
-    {
-        public const int MessageReadyEvent = 1;        
-        public const int StoppedEvent = 2;
-        public const int ErrorEvent = 3;
-
-        private const int USocketSourceId = 1;
-
+    public class DecoderV2 : DecoderBase
+    {                
         enum State
         {
             Idle = 1,
@@ -41,24 +35,18 @@ namespace NetMessage.NetMQ.Tcp
         private bool m_isMore;
         private int m_size;
 
+        private NetMQMessage m_message;
         private USocket m_usocket;
 
-
-        public DecodeV2(int sourceId, StateMachine owner)
+        public DecoderV2(int sourceId, StateMachine owner)
             : base(sourceId, owner)
         {
             m_receiveBuffer = new byte[ReceiveBufferSize];
             m_state = State.Idle;
             m_doneEvent = new StateMachineEvent();
         }
-
-        public NetMQMessage Message
-        {
-            get;
-            set;
-        }
-
-        public bool IsIdle
+               
+        public override bool IsIdle
         {
             get
             {
@@ -66,36 +54,26 @@ namespace NetMessage.NetMQ.Tcp
             }
         }
 
-        public void Start(USocket usocket)
-        {
-            m_usocket = usocket;
-
+        public override void Start(USocket usocket, NetMQMessage message)
+        {            
             Debug.Assert(m_state == State.Idle);
+            
+            m_usocket = usocket;
+            m_message = message;
 
             StartStateMachine();
         }
 
-        public void Stop()
+        public override void Stop()
         {            
             StopStateMachine();
         }
-
-        public void OnUSocketReceived()
-        {
-            Feed(USocketSourceId, USocket.ReceivedEvent, null);
-        }
-
-        public void OnUSocketError()
-        {
-            Feed(USocketSourceId, USocket.ErrorEvent, null);
-        }
-
+       
         protected override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
-                Debug.Assert(m_state == State.HasMessage || m_state == State.Errored);
-                Message = null;
+                Debug.Assert(m_state == State.HasMessage || m_state == State.Errored || m_state == State.ReadingFlag);                
 
                 m_state = State.Idle;
                 Stopped(StoppedEvent);
@@ -112,8 +90,7 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case StartAction:
-                                    Message = new NetMQMessage();
+                                case StartAction:                                    
                                     m_usocket.Receive(m_receiveBuffer, 0, 1);
                                     m_state = State.ReadingFlag;
                                     break;
@@ -124,10 +101,10 @@ namespace NetMessage.NetMQ.Tcp
                 case State.ReadingFlag:
                     switch (sourceId)
                     {
-                        case USocketSourceId:
+                        case ActionSourceId:
                             switch (type)
                             {
-                                case USocket.ReceivedEvent:
+                                case ReceivedType:
                                     int flag = m_receiveBuffer[0];
 
                                     m_isMore = (flag & 1) == 1;
@@ -152,10 +129,10 @@ namespace NetMessage.NetMQ.Tcp
                 case State.ReadingOneByteSize:
                     switch (sourceId)
                     {
-                        case USocketSourceId:
+                        case ActionSourceId:
                             switch (type)
                             {
-                                case USocket.ReceivedEvent:
+                                case ReceivedType:
                                     m_size = m_receiveBuffer[0];
 
                                     if (m_size > 0)
@@ -165,7 +142,7 @@ namespace NetMessage.NetMQ.Tcp
                                     }
                                     else
                                     {
-                                        Message.AppendEmptyFrame();
+                                        m_message.AppendEmptyFrame();
 
                                         if (m_isMore)
                                         {
@@ -174,7 +151,8 @@ namespace NetMessage.NetMQ.Tcp
                                         }
                                         else
                                         {
-                                            Raise(m_doneEvent, MessageReadyEvent);
+                                            m_message = null;
+                                            Raise(m_doneEvent, DecoderBase.MessageReceivedEvent);
                                             m_state = State.HasMessage;
                                         }
                                     }
@@ -188,10 +166,10 @@ namespace NetMessage.NetMQ.Tcp
                 case State.ReadingEightByteSize:
                     switch (sourceId)
                     {
-                        case USocketSourceId:
+                        case ActionSourceId:
                             switch (type)
                             {
-                                case USocket.ReceivedEvent:
+                                case ReceivedType:
 
                                     long size = ReadLong(m_receiveBuffer, 0);
 
@@ -199,7 +177,7 @@ namespace NetMessage.NetMQ.Tcp
                                     {
                                         // TODO: support large messages
                                         m_state = State.Errored;
-                                        Raise(m_doneEvent, ErrorEvent);
+                                        Raise(m_doneEvent, DecoderBase.ErrorEvent);
                                     }
                                     m_size = (int)size;
 
@@ -214,14 +192,14 @@ namespace NetMessage.NetMQ.Tcp
                 case State.ReadingBody:
                     switch (sourceId)
                     {
-                        case USocketSourceId:
+                        case ActionSourceId:
                             switch (type)
                             {
-                                case USocket.ReceivedEvent:
+                                case ReceivedType:
 
                                     byte[] buffer = new byte[m_size];
                                     Buffer.BlockCopy(m_receiveBuffer, 0, buffer, 0, m_size);
-                                    Message.Append(buffer);
+                                    m_message.Append(buffer);
 
                                     if (m_isMore)
                                     {
@@ -230,7 +208,8 @@ namespace NetMessage.NetMQ.Tcp
                                     }
                                     else
                                     {
-                                        Raise(m_doneEvent, MessageReadyEvent);
+                                        m_message = null;                                        
+                                        Raise(m_doneEvent, DecoderBase.MessageReceivedEvent);
                                         m_state = State.HasMessage;
                                     }
 

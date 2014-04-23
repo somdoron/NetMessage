@@ -113,7 +113,7 @@ namespace NetMessage.Core.Protocols.Utils
 
                     slot.Pipes.Remove(data);
 
-                    if (m_current != data.Priority)
+                    if (m_current == data.Priority)
                     {
                         // the current slot may have become empty and we have switch
                         // to lower priority slots.

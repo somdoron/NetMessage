@@ -119,7 +119,15 @@ namespace NetMessage.Core.AsyncIO
             {
                 return base.IsStateMachineIdle;
             }
-        }        
+        }
+
+        public int BytesReceived
+        {
+            get
+            {
+                return m_in.SocketAsyncEventArgs.BytesTransferred;
+            }
+        }
 
         public void SwapOwner(ref StateMachine owner, ref int sourceId)
         {
@@ -139,7 +147,7 @@ namespace NetMessage.Core.AsyncIO
 
         public void SetSocketOption(SocketOptionLevel level, SocketOptionName name, object value)
         {
-            Debug.Assert(m_state == State.Starting || m_state == State.Accepted);            
+            Debug.Assert(m_state == State.Starting || m_state == State.Accepted);
 
             m_socket.SetSocketOption(level, name, value);
         }
@@ -252,22 +260,29 @@ namespace NetMessage.Core.AsyncIO
             }
         }
 
+        public void Send(byte[] buffer, int offset, int count)
+        {
+            Debug.Assert(m_state == State.Active);
+
+            m_out.SocketAsyncEventArgs.BufferList = null;
+            m_out.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);
+            SendInner();
+        }
+
         public void Send(IList<ArraySegment<byte>> items)
         {
             Debug.Assert(m_state == State.Active);
 
-            if (items.Count == 1)
-            {
-                m_out.SocketAsyncEventArgs.SetBuffer(items[0].Array, items[0].Offset, items[0].Count);
-            }
-            else
-            {
-                m_out.SocketAsyncEventArgs.BufferList = items;
-            }
+            m_out.SocketAsyncEventArgs.SetBuffer(null,0,0);
+            m_out.SocketAsyncEventArgs.BufferList = items;
+            SendInner();
+        }
 
+        private void SendInner()
+        {
             m_out.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
 
-            bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);            
+            bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);
 
             if (isPending)
             {
