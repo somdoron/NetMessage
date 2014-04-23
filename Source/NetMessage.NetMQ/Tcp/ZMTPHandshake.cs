@@ -138,7 +138,7 @@ namespace NetMessage.NetMQ.Tcp
                             {
                                 case StartAction:
                                     // TODO: this should be an option 
-                                    m_timer.Start(2000);
+                                    m_timer.Start(20000);
                                     m_usocket.Send(m_outGreeting, 0, m_outGreeting.Length);
                                     m_state = State.Sending;
                                     break;
@@ -199,28 +199,11 @@ namespace NetMessage.NetMQ.Tcp
                                         m_usocket.Receive(m_inGreeting, m_inGreetingReceived, GreetingSize - m_inGreetingReceived);
                                     }
                                     else
-                                    {
-                                        bool isSignatureOk = true;
-
-                                        // all greeting arrived, checking the signature
-                                        for (int i = 0; i < SignatureSize; i++)
-                                        {
-                                            if (m_inGreeting[i] != m_outGreeting[i])
-                                            {
-                                                m_timer.Stop();
-                                                m_state = State.StoppingTimerError;
-                                                isSignatureOk = false;
-                                                break;
-                                            }
-                                        }
-
-                                        if (!isSignatureOk)
-                                            break;
-
+                                    {         
                                         int revision = m_inGreeting[RevisionLocation];
 
-                                        // currently only revision 1 is supported
-                                        if (revision != Revision)
+                                        // any revision higher than one is supported
+                                        if (revision >= Revision)
                                         {
                                             m_timer.Stop();
                                             m_state = State.StoppingTimerError;

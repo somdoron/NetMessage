@@ -50,7 +50,6 @@ namespace NetMessage.Core.AsyncIO
         public const int SentEvent = 3;
         public const int ReceivedEvent = 4;
         public const int ErrorEvent = 5;
-
         public const int StoppedEvent = 6;
         public const int ShutdownEvent = 7;
 
@@ -307,9 +306,9 @@ namespace NetMessage.Core.AsyncIO
 
             m_in.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);
 
-            bool isPending = m_socket.ReceiveAsync(m_in.SocketAsyncEventArgs);
-
             m_in.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
+
+            bool isPending = m_socket.ReceiveAsync(m_in.SocketAsyncEventArgs);            
 
             if (isPending)
             {
