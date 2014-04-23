@@ -1,17 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using NetMessage.Core;
-using NetEndPoint = System.Net.EndPoint;
+using System.Net.Sockets;
 
-namespace NetMessage.Transport.Utils
+namespace NetMessage.Core.Transport.Utils
 {
     public static class AddressUtility
     {
-        public static NetEndPoint ResolveAddress(string address, bool ip4Only)
+        public static EndPoint ResolveAddress(string address, bool ip4Only)
         {
             int portPosition = address.LastIndexOf(':');
 
@@ -45,7 +40,16 @@ namespace NetMessage.Transport.Utils
                     return new IPEndPoint(IPAddress.IPv6Loopback, port);
             }
 
-            return new IPEndPoint(IPAddress.Parse(address), port);
+            IPAddress ipAddress;
+
+            if (IPAddress.TryParse(address, out ipAddress))
+            {
+                return new IPEndPoint(ipAddress, port);    
+            }
+            else
+            {
+                return new DnsEndPoint(address, port, ip4Only ? AddressFamily.InterNetwork : AddressFamily.InterNetworkV6);   
+            }            
         }
     }
 }

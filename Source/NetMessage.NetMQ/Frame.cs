@@ -43,7 +43,7 @@ namespace NetMessage.NetMQ
         }
 
         public NetMQFrame(string message)
-            : this((byte[]) Encoding.ASCII.GetBytes(message))
+            : this(Encoding.ASCII.GetBytes(message))
         {
 
         }
@@ -57,7 +57,7 @@ namespace NetMessage.NetMQ
         {
             get
             {
-                return Buffer.Offset;
+                return m_messageSize;
             }
             set
             {

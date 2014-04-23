@@ -96,7 +96,7 @@ namespace NetMessage.Core.AsyncIO
             Context = owner.Context;            
             m_sourceId = sourceId;
             m_owner = owner;
-            StoppedEvent = new StateMachineEvent();
+            StateMachineStoppedEvent = new StateMachineEvent();
         }
 
         public StateMachine(Context context)
@@ -105,10 +105,10 @@ namespace NetMessage.Core.AsyncIO
             m_state = State.Idle;
             m_sourceId = RootSourceId;
             m_owner = null;
-            StoppedEvent = new StateMachineEvent();
+            StateMachineStoppedEvent = new StateMachineEvent();
         }
 
-        protected internal StateMachineEvent StoppedEvent { get; private set; }
+        protected internal StateMachineEvent StateMachineStoppedEvent { get; private set; }
 
         protected abstract void Handle(int sourceId, int type, StateMachine source);
 
@@ -117,7 +117,7 @@ namespace NetMessage.Core.AsyncIO
         public virtual void Dispose()
         {
             Debug.Assert(IsStateMachineIdle);
-            StoppedEvent.Dispose();
+            StateMachineStoppedEvent.Dispose();
         }
 
         internal Context Context { get; private set; }        
@@ -126,7 +126,7 @@ namespace NetMessage.Core.AsyncIO
         {
             get
             {
-                return m_state == State.Idle && !StoppedEvent.Active;
+                return m_state == State.Idle && !StateMachineStoppedEvent.Active;
             }
         }
 
@@ -150,7 +150,7 @@ namespace NetMessage.Core.AsyncIO
         {
             Debug.Assert(m_state == State.Stopping);
 
-            Raise(StoppedEvent, type);
+            Raise(StateMachineStoppedEvent, type);
             m_state = State.Idle;
         }
 
@@ -160,13 +160,16 @@ namespace NetMessage.Core.AsyncIO
             m_state = State.Idle;
         }
 
-        protected virtual void SwapOwner(StateMachine owner, int sourceId, out StateMachine oldOwner, out int oldSourceId)
+        protected void SwapStateMachineOwner(ref StateMachine owner, ref int sourceId)
         {
-            oldSourceId = m_sourceId;
-            oldOwner = m_owner;
+            StateMachine oldOwner = m_owner;
+            int oldSourceId = m_sourceId;          
 
             m_sourceId = sourceId;
             m_owner = owner;
+
+            owner = oldOwner;
+            sourceId = oldSourceId;
         }
 
         protected void Action(int type)

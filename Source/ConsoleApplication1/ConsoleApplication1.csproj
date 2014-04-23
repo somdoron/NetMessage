@@ -4,15 +4,16 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{28919040-A12D-4B4E-A478-E149FE99F0CC}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{7C0CD2D6-FC4D-4CD7-96FC-DF13628D9307}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NetMessage.Core</RootNamespace>
-    <AssemblyName>NetMessage.Core</AssemblyName>
+    <RootNamespace>ConsoleApplication1</RootNamespace>
+    <AssemblyName>ConsoleApplication1</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,6 +23,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -32,41 +34,29 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AsyncIO\AsyncOperation.cs" />
-    <Compile Include="AsyncIO\Timer.cs" />
-    <Compile Include="Exceptions.cs" />
-    <Compile Include="AsyncIO\StateMachine.cs" />
-    <Compile Include="AsyncIO\USocket.cs" />
-    <Compile Include="AsyncIO\Context.cs" />
-    <Compile Include="Core\EndpointOptions.cs" />
-    <Compile Include="Core\IPipe.cs" />
-    <Compile Include="MessageBase.cs" />
-    <Compile Include="Protocols\Utils\FairQueuing.cs" />
-    <Compile Include="Protocols\Utils\LoadBalancer.cs" />
-    <Compile Include="Protocols\Utils\PriorityList.cs" />
-    <Compile Include="Socket.cs" />
-    <Compile Include="Core\SocketBase.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Core\SocketEvents.cs" />
-    <Compile Include="SocketOption.cs" />
-    <Compile Include="Core\SocketType.cs" />
-    <Compile Include="Core\Endpoint.cs" />
-    <Compile Include="Transport\EndpointBase.cs" />
-    <Compile Include="Transport\PipeBase.cs" />
-    <Compile Include="Transport\Transport.cs" />
-    <Compile Include="Transport\OptionSet.cs" />
-    <Compile Include="Transport\Utils\Backoff.cs" />
-    <Compile Include="Transport\Utils\DNS.cs" />
-    <Compile Include="Transport\Utils\AddressUtility.cs" />
-    <Compile Include="Utils\Signaler.cs" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NetMessage.Core\NetMessage.Core.csproj">
+      <Project>{28919040-A12D-4B4E-A478-E149FE99F0CC}</Project>
+      <Name>NetMessage.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\NetMessage.NetMQ\NetMessage.NetMQ.csproj">
+      <Project>{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}</Project>
+      <Name>NetMessage.NetMQ</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

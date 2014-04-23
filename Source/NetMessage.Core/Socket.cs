@@ -10,7 +10,6 @@ using NetMessage.Core.Core;
 using NetMessage.Core.Transport;
 using NetMessage.Core.Utils;
 using NetMessage.Core;
-using NetMessage.Transport;
 
 namespace NetMessage.Core
 {
@@ -181,11 +180,11 @@ namespace NetMessage.Core
         /// </summary>
         internal void Stopped()
         {
-            StoppedEvent.StateMachine = this;
-            StoppedEvent.SourceId = StateMachine.ActionSourceId;
-            StoppedEvent.Source = null;
-            StoppedEvent.Type = StoppedAction;
-            Context.Raise(StoppedEvent);
+            StateMachineStoppedEvent.StateMachine = this;
+            StateMachineStoppedEvent.SourceId = StateMachine.ActionSourceId;
+            StateMachineStoppedEvent.Source = null;
+            StateMachineStoppedEvent.Type = StoppedAction;
+            Context.Raise(StateMachineStoppedEvent);
         }
 
         internal bool IsPeer(int socketType)

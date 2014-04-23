@@ -8,7 +8,6 @@ using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core.AsyncIO;
 using NetMessage.Core.Transport;
-using NetMessage.Transport;
 
 namespace NetMessage.Core.Core
 {
@@ -35,7 +34,7 @@ namespace NetMessage.Core.Core
         private string m_address;
         private EndpointBase<T> m_endpointBase;
 
-        private Exception m_exception = null;
+        private bool m_errored= false;
 
         public Endpoint(Socket<T> socket, int endpointId, Transport.Transport<T> transport, bool bind,
             string address)
@@ -98,11 +97,11 @@ namespace NetMessage.Core.Core
 
         public void Stopped()
         {
-            StoppedEvent.StateMachine = this;
-            StoppedEvent.SourceId = StateMachine.ActionSourceId;
-            StoppedEvent.Source = null;
-            StoppedEvent.Type = StoppedAction;
-            Context.Raise(StoppedEvent);
+            StateMachineStoppedEvent.StateMachine = this;
+            StateMachineStoppedEvent.SourceId = StateMachine.ActionSourceId;
+            StateMachineStoppedEvent.Source = null;
+            StateMachineStoppedEvent.Type = StoppedAction;
+            Context.Raise(StateMachineStoppedEvent);
         }
 
         public object GetOption( SocketOption option)
@@ -168,20 +167,21 @@ namespace NetMessage.Core.Core
             }
         }
 
-        public void SetErrored(Exception exception)
+        public void SetError()
         {
-            if (m_exception != exception)
+            if (!m_errored)
             {
-                m_exception = exception;
+                m_errored = true;
                 // TODO: report the exception to the socket
             }
         }
 
         public void ClearError()
         {
-            if (m_exception != null)
+            if (m_errored)
             {
-                m_exception = null;
+
+                m_errored = false;
                 // TODO: report the clear exception to the socket
             }
         } 

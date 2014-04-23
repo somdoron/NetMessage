@@ -1,22 +1,28 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Net.Sockets;
+using NetMessage.Core;
 using NetMessage.Core.AsyncIO;
 using NetMessage.Core.Core;
+using NetMessage.Core.Transport;
+using NetMessage.Core.Transport.Utils;
 using NetMessage.NetMQ;
-using NetMessage.Transport.Utils;
 using SocketType = System.Net.Sockets.SocketType;
 
-namespace NetMessage.Core.Transport.Tcp
+namespace NetMessage.NetMQ.Tcp
 {
     public class BoundEndpoint : EndpointBase<NetMQMessage>
     {
+        private const int USocketSourceId = 1;
+        private const int AcceptConnectionSourceId = 2;
+
         enum State
         {
             Idle = 1,
             Active,
-            StoppingAcceptedSocket,
-            //StoppingSocket,
+            StoppingAcceptSocket,
+            StoppingUSocket,
             StoppingAcceptedSockets
         }
 
@@ -24,15 +30,13 @@ namespace NetMessage.Core.Transport.Tcp
 
         private USocket m_usocket;
 
-        private USocket m_acceptedConnection;
+        private AcceptConnection m_acceptConnection;
 
-        private List<AcceptedConnection> m_connections;
+        private List<AcceptConnection> m_connections;
 
         public BoundEndpoint(Endpoint<NetMQMessage> endpoint)
             : base(endpoint)
         {
-            string address = endpoint.Address;
-
             bool ipV4Only = (bool)endpoint.GetOption(SocketOption.IPV4Only);
 
             // just to check if valid address
@@ -40,10 +44,10 @@ namespace NetMessage.Core.Transport.Tcp
 
             m_state = State.Idle;
 
-            m_acceptedConnection = null;
-            m_connections = new List<AcceptedConnection>();
+            m_acceptConnection = null;
+            m_connections = new List<AcceptConnection>();
 
-            m_usocket = new USocket(this);
+            m_usocket = new USocket(USocketSourceId, this);
 
             StartStateMachine();
         }
@@ -56,38 +60,43 @@ namespace NetMessage.Core.Transport.Tcp
             base.Dispose();
         }
 
-        public void Stop()
-        {
-            StopStateMachine();
-        }
-
         protected override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == StateMachine.ActionSourceId && type == StateMachine.StopAction)
             {
-                m_acceptedConnection.Stop();
-                m_state = State.StoppingAcceptedSocket;
+                m_acceptConnection.Stop();
+                m_state = State.StoppingAcceptSocket;
             }
 
-            if (m_state == State.StoppingAcceptedSocket)
+            if (m_state == State.StoppingAcceptSocket)
             {
-                if (!m_acceptedConnection.IsIdle)
+                if (!m_acceptConnection.IsIdle)
                 {
                     return;
                 }
 
-                m_acceptedConnection.Dispose();
-                m_acceptedConnection = null;
-                m_usocket.Dispose();
+                m_acceptConnection.Dispose();
+                m_acceptConnection = null;
+                m_usocket.Stop();
+
+                m_state = State.StoppingUSocket;
+            }
+
+            if (m_state == State.StoppingUSocket)
+            {
+                if (!m_usocket.IsIdle)
+                {
+                    return;
+                }
 
                 if (m_connections.Count > 0)
                 {
-                    foreach (AcceptedConnection acceptedConnection in m_connections)
+                    foreach (AcceptConnection acceptedConnection in m_connections)
                     {
                         acceptedConnection.Stop();
                     }
- 
-                    m_state = State.StoppingAcceptedSockets;               
+
+                    m_state = State.StoppingAcceptedSockets;
                 }
                 else
                 {
@@ -98,7 +107,7 @@ namespace NetMessage.Core.Transport.Tcp
             }
             else if (m_state == State.StoppingAcceptedSockets)
             {
-                AcceptedConnection connection= (AcceptedConnection)source;
+                AcceptConnection connection = (AcceptConnection)source;
                 m_connections.Remove(connection);
                 connection.Dispose();
 
@@ -113,25 +122,77 @@ namespace NetMessage.Core.Transport.Tcp
 
         protected override void Handle(int sourceId, int type, StateMachine source)
         {
-            
+            switch (m_state)
+            {
+                case State.Idle:
+                    switch (sourceId)
+                    {
+                        case StateMachine.ActionSourceId:
+                            switch (type)
+                            {
+                                case StateMachine.StartAction:
+                                    StartListening();
+                                    StartAccepting();
+                                    m_state = State.Active;
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+                case State.Active:
+                    switch (sourceId)
+                    {
+                        case AcceptConnectionSourceId:
+                            if (source == m_acceptConnection)
+                            {
+                                switch (type)
+                                {
+                                    case AcceptConnection.AcceptedEvent:
+                                        m_connections.Add(m_acceptConnection);
+                                        m_acceptConnection = null;
+                                        StartAccepting();
+                                        break;
+                                }
+                            }
+
+                            AcceptConnection connection = (AcceptConnection)source;
+
+                            switch (type)
+                            {
+                                case AcceptConnection.ErrorEvent:
+                                    connection.Stop();
+                                    break;
+                                case AcceptConnection.StoppedEvent:
+                                    m_connections.Remove(connection);
+                                    connection.Dispose();
+                                    break;
+                            }
+                            break;
+                    }
+
+                    break;
+            }
         }
 
         private void StartListening()
-        {            
+        {
             bool ipV4Only = (bool)GetOption(SocketOption.IPV4Only);
             var endpoint = AddressUtility.ResolveAddress(Address, ipV4Only);
 
+            m_usocket.Start(ipV4Only ? AddressFamily.InterNetwork : AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
             m_usocket.Bind(endpoint);
 
             // TODO: the backlog should be an option
-            m_usocket.Listen(100);            
+            m_usocket.Listen(100);
         }
 
         private void StartAccepting()
         {
-            Debug.Assert(m_acceptedConnection == null);
+            Debug.Assert(m_acceptConnection == null);
 
-            
+            m_acceptConnection = new AcceptConnection(this, AcceptConnectionSourceId);
+
+            m_acceptConnection.Start(m_usocket);
         }
     }
 }

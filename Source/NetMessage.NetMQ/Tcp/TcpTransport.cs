@@ -29,7 +29,7 @@ namespace NetMessage.NetMQ.Tcp
 
         public override EndpointBase<NetMQMessage> Connect(object hint)
         {
-            throw new NotImplementedException();
+            return new ConnectEndpoint((Endpoint<NetMQMessage>)hint);
         }
     }
 }

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core.Transport;
 using NetMessage.NetMQ.InProc;
+using NetMessage.NetMQ.Tcp;
 
 namespace NetMessage.NetMQ
 {
@@ -12,12 +13,12 @@ namespace NetMessage.NetMQ
     {
         private static Dictionary<string, Transport<NetMQMessage>> s_transports;
 
-
         static Global()
         {
             s_transports = new Dictionary<string, Transport<NetMQMessage>>();
 
             RegisterTransport(new InProcTransport());
+            RegisterTransport(new TcpTransport());
         }
 
         public static void RegisterTransport(Transport<NetMQMessage> transport)

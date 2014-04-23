@@ -51,9 +51,9 @@ namespace NetMessage.Core.Transport
             return m_endpoint.IsPeer(socketType);
         }
 
-        public void SetError(Exception exception)
+        public void SetError()
         {
-            m_endpoint.SetErrored(exception);
+            m_endpoint.SetError();
         }
 
         public void ClearError()

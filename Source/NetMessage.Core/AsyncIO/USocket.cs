@@ -42,18 +42,17 @@ namespace NetMessage.Core.AsyncIO
             StoppingAccept
         }
 
-        public const int SourceId = 30;
         private const int InSourceId = 31;
         private const int OutSourceId = 32;
 
         public const int ConnectedEvent = 1;
-        public const int AcceptedEvent = 1;
-        public const int SentEvent = 1;
-        public const int ReceivedEvent = 1;
-        public const int ErrorEvent = 1;
-        public const int AcceptErrorEvent = 1;
-        public const int StoppedEvent = 1;
-        public const int ShutdownEvent = 1;
+        public const int AcceptedEvent = 2;
+        public const int SentEvent = 3;
+        public const int ReceivedEvent = 4;
+        public const int ErrorEvent = 5;
+
+        public const int StoppedEvent = 6;
+        public const int ShutdownEvent = 7;
 
         private const int AcceptAction = 1;
         private const int BeingAcceptedAction = 2;
@@ -77,8 +76,8 @@ namespace NetMessage.Core.AsyncIO
 
         private USocket m_acceptSocket;
 
-        public USocket(StateMachine owner)
-            : base(SourceId, owner)
+        public USocket(int sourceId, StateMachine owner)
+            : base(sourceId, owner)
         {
             m_state = State.Idle;
 
@@ -107,7 +106,7 @@ namespace NetMessage.Core.AsyncIO
                 }
                 catch
                 {
-                                        
+
                 }
             }
 
@@ -118,8 +117,13 @@ namespace NetMessage.Core.AsyncIO
         {
             get
             {
-                return true;
+                return base.IsStateMachineIdle;
             }
+        }        
+
+        public void SwapOwner(ref StateMachine owner, ref int sourceId)
+        {
+            base.SwapStateMachineOwner(ref owner, ref sourceId);
         }
 
         public void Start(AddressFamily addressFamily, SocketType socketType, ProtocolType protocolType)
@@ -134,6 +138,13 @@ namespace NetMessage.Core.AsyncIO
         }
 
         public void SetSocketOption(SocketOptionLevel level, SocketOptionName name, object value)
+        {
+            Debug.Assert(m_state == State.Starting || m_state == State.Accepted);            
+
+            m_socket.SetSocketOption(level, name, value);
+        }
+
+        public void SetSocketOption(SocketOptionLevel level, SocketOptionName name, int value)
         {
             Debug.Assert(m_state == State.Starting || m_state == State.Accepted);
 
@@ -171,42 +182,30 @@ namespace NetMessage.Core.AsyncIO
             listener.Action(AcceptAction);
             Action(BeingAcceptedAction);
 
-            m_in.SocketAsyncEventArgs.AcceptSocket = m_socket;
+            listener.m_in.SocketAsyncEventArgs.AcceptSocket = m_socket;
 
-            SocketError socketError;
+            listener.m_in.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
 
-            try
-            {
-                bool isPending = listener.m_socket.AcceptAsync(m_in.SocketAsyncEventArgs);
+            bool isPending = listener.m_socket.AcceptAsync(listener.m_in.SocketAsyncEventArgs);
 
-                if (isPending)
-                {
-                    socketError = SocketError.IOPending;
-                }
-                else
-                {
-                    socketError = m_in.SocketAsyncEventArgs.SocketError;
-                }
-            }
-            catch (SocketException ex)
-            {
-                socketError = ex.SocketErrorCode;
-            }
-
-            if (socketError == SocketError.Success)
-            {
-                listener.Action(DoneAction);
-                Action(DoneAction);
-            }
-            else if (socketError != SocketError.IOPending)
-            {
-                listener.Action(ErrorAction);
-                Action(ErrorAction);
-            }
-            else
+            if (isPending)
             {
                 m_acceptSocket = listener;
                 listener.m_acceptSocket = this;
+                listener.m_in.Start(false);
+            }
+            else
+            {
+                if (listener.m_in.SocketAsyncEventArgs.SocketError == SocketError.Success)
+                {
+                    listener.Action(DoneAction);
+                    Action(DoneAction);
+                }
+                else
+                {
+                    listener.Action(ErrorAction);
+                    Action(ErrorAction);
+                }
             }
         }
 
@@ -232,72 +231,58 @@ namespace NetMessage.Core.AsyncIO
 
             m_out.SocketAsyncEventArgs.RemoteEndPoint = endpoint;
 
-            SocketError socketError;
+            m_out.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
 
-            try
+            bool isPending = m_socket.ConnectAsync(m_out.SocketAsyncEventArgs);
+
+            if (isPending)
             {
-                bool isPending = m_socket.ConnectAsync(m_out.SocketAsyncEventArgs);
-
-                if (isPending)
+                m_out.Start(false);
+            }
+            else
+            {
+                if (m_out.SocketAsyncEventArgs.SocketError == SocketError.Success)
                 {
-                    socketError = SocketError.IOPending;
+                    Action(DoneAction);
                 }
                 else
                 {
-                    socketError = m_out.SocketAsyncEventArgs.SocketError;
+                    Action(ErrorAction);
                 }
-            }
-            catch (SocketException ex)
-            {
-                socketError = ex.SocketErrorCode;
-            }
-
-            if (socketError == SocketError.Success)
-            {
-                Action(DoneAction);
-            }
-            else if (socketError != SocketError.IOPending)
-            {
-                Action(ErrorAction);
             }
         }
 
-        public void Send(ArraySegment<byte>[] items)
+        public void Send(IList<ArraySegment<byte>> items)
         {
             Debug.Assert(m_state == State.Active);
 
-            if (items.Length == 1)
+            if (items.Count == 1)
             {
                 m_out.SocketAsyncEventArgs.SetBuffer(items[0].Array, items[0].Offset, items[0].Count);
             }
             else
             {
-                m_out.SocketAsyncEventArgs.BufferList = items.ToList();
+                m_out.SocketAsyncEventArgs.BufferList = items;
             }
 
-            SocketError socketError;
+            m_out.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
 
-            try
+            bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);            
+
+            if (isPending)
             {
-                bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);
-
-                if (isPending)
+                m_out.Start(false);
+            }
+            else
+            {
+                if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
                 {
-                    socketError = SocketError.IOPending;
+                    Action(ErrorAction);
                 }
                 else
                 {
-                    socketError = m_out.SocketAsyncEventArgs.SocketError;
+                    Feed(OutSourceId, DoneAction, null);
                 }
-            }
-            catch (SocketException ex)
-            {
-                socketError = ex.SocketErrorCode;
-            }
-
-            if (socketError != SocketError.Success && socketError != SocketError.IOPending)
-            {
-                Action(ErrorAction);
             }
         }
 
@@ -307,29 +292,24 @@ namespace NetMessage.Core.AsyncIO
 
             m_in.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);
 
-            SocketError socketError;
+            bool isPending = m_socket.ReceiveAsync(m_in.SocketAsyncEventArgs);
 
-            try
+            m_in.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
+
+            if (isPending)
             {
-                bool isPending = m_socket.ReceiveAsync(m_in.SocketAsyncEventArgs);
-
-                if (isPending)
+                m_in.Start(true);
+            }
+            else
+            {
+                if (m_in.SocketAsyncEventArgs.SocketError != SocketError.Success)
                 {
-                    socketError = SocketError.IOPending;
+                    Action(ErrorAction);
                 }
                 else
                 {
-                    socketError = m_in.SocketAsyncEventArgs.SocketError;
+                    Feed(InSourceId, DoneAction, null);
                 }
-            }
-            catch (SocketException ex)
-            {
-                socketError = ex.SocketErrorCode;
-            }
-
-            if (socketError != SocketError.Success && socketError != SocketError.IOPending)
-            {
-                Action(ErrorAction);
             }
         }
 
@@ -365,7 +345,7 @@ namespace NetMessage.Core.AsyncIO
                 else if (m_state == State.BeingAccepted)
                 {
                     m_acceptSocket.Action(CancelAction);
-                    
+
                     // will close the socket
                     CloseSocket();
 
@@ -621,7 +601,7 @@ namespace NetMessage.Core.AsyncIO
                                 case DoneAction:
                                     m_state = State.Listening;
                                     break;
-                                case CancelAction:                                    
+                                case CancelAction:
                                     m_state = State.Cancelling;
                                     break;
                             }
@@ -685,11 +665,6 @@ namespace NetMessage.Core.AsyncIO
             }
 
             m_socket = null;
-        }
-
-        public void SwapOwner(StateMachine owner)
-        {
-
         }
     }
 }
