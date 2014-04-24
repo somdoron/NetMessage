@@ -27,6 +27,8 @@ namespace NetMessage.NetMQ.LocalThroughput
 
                 var message = dealerSocket.ReceiveMessage();
 
+                Console.WriteLine("First message received...");
+
                 var stopWatch = Stopwatch.StartNew();
                 for (int i = 0; i != messageCount - 1; i++)
                 {

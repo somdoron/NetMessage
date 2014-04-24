@@ -14,15 +14,16 @@ namespace NetMessage.NetMQ.Tcp
         public const int ErrorEvent = 2;
         public const int StoppedEvent = 3;
 
-        protected HandshakeBase(int sourceId, StateMachine owner) : base(sourceId, owner)
+        protected HandshakeBase(int sourceId, StateMachine owner)
+            : base(sourceId, owner)
         {
-            
+
         }
 
         public abstract bool IsIdle { get; }
 
-        public abstract DecoderBase CreateDecoder(int sourceId, StateMachine owner);
-        public abstract EncoderBase CreateEncoder(int sourceId, StateMachine owner);
+        public abstract DecoderBase Decoder { get; }
+        public abstract EncoderBase Encoder { get; }
 
         public abstract void Start(USocket socket, PipeBase<NetMQMessage> pipe);
 

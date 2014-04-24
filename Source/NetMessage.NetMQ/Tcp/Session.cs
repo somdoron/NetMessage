@@ -59,14 +59,14 @@ namespace NetMessage.NetMQ.Tcp
 
         enum InState
         {
-            Receiving=1,
+            Receiving = 1,
             Stopping,
             HasMessage
         }
 
         enum OutState
         {
-            Idle=1,
+            Idle = 1,
             Sending,
             Stopping
         }
@@ -180,9 +180,19 @@ namespace NetMessage.NetMQ.Tcp
             {
                 m_pipe.Stop();
 
-                if (m_decoder!= null && !m_decoder.IsIdle)
+                if (m_decoder != null && !m_decoder.IsIdle)
                 {
                     m_decoder.Stop();
+                }
+
+                if (m_encoder != null && !m_encoder.IsIdle)
+                {
+                    m_encoder.Stop();
+                }
+
+                if (!m_handshake.IsIdle)
+                {
+                    m_handshake.Stop();
                 }
 
                 m_state = State.Stopping;
@@ -190,7 +200,7 @@ namespace NetMessage.NetMQ.Tcp
 
             if (m_state == State.Stopping)
             {
-                if (m_decoder == null || m_decoder.IsIdle)
+                if ((m_decoder == null || m_decoder.IsIdle) && (m_encoder == null || m_encoder.IsIdle) && m_handshake.IsIdle)
                 {
                     m_usocket.SwapOwner(ref m_usocketOwner, ref m_usocketOwnerSourceId);
                     m_usocket = null;
@@ -232,8 +242,16 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case HandshakeBase.DoneEvent:
-                                    m_decoder = m_handshake.CreateDecoder(DecoderSourceId, this);
-                                    m_encoder = m_handshake.CreateEncoder(EncoderSourceId, this);
+                                    m_decoder = m_handshake.Decoder;
+
+                                    StateMachine decoderOwner = this;
+                                    int decoderSourceId = DecoderSourceId;
+                                    m_decoder.SwapOwner(ref decoderOwner, ref decoderSourceId);
+
+                                    m_encoder = m_handshake.Encoder;
+                                    StateMachine encoderOwner = this;
+                                    int encoderSourceId = EncoderSourceId;
+                                    m_encoder.SwapOwner(ref encoderOwner, ref encoderSourceId);
 
                                     m_handshake.Stop();
                                     m_state = State.StoppingHandshake;

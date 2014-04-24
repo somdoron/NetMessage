@@ -9,11 +9,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApplication1", "Cons
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApplication2", "ConsoleApplication2\ConsoleApplication2.csproj", "{79518F6F-ACC6-488D-80AB-CB554017A131}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ.RemoteThroughput", "NetMessage.NetMQ.RemoteThroughput\NetMessage.NetMQ.RemoteThroughput.csproj", "{86831107-6932-4059-8DE1-2CE290EE8161}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Performance", "Performance", "{05421C6E-0DCD-4AE0-9F75-CD18A9603439}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ.LocalThroughput", "NetMessage.NetMQ.LocalThroughput\NetMessage.NetMQ.LocalThroughput.csproj", "{A9DA9E6C-32EB-498F-9226-99E668C76501}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ.RemoteThroughput", "NetMessage.NetMQ.RemoteThroughput\NetMessage.NetMQ.RemoteThroughput.csproj", "{86831107-6932-4059-8DE1-2CE290EE8161}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -37,20 +35,16 @@ Global
 		{79518F6F-ACC6-488D-80AB-CB554017A131}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{79518F6F-ACC6-488D-80AB-CB554017A131}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{79518F6F-ACC6-488D-80AB-CB554017A131}.Release|Any CPU.Build.0 = Release|Any CPU
-		{86831107-6932-4059-8DE1-2CE290EE8161}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{86831107-6932-4059-8DE1-2CE290EE8161}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{86831107-6932-4059-8DE1-2CE290EE8161}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{86831107-6932-4059-8DE1-2CE290EE8161}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A9DA9E6C-32EB-498F-9226-99E668C76501}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A9DA9E6C-32EB-498F-9226-99E668C76501}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A9DA9E6C-32EB-498F-9226-99E668C76501}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A9DA9E6C-32EB-498F-9226-99E668C76501}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86831107-6932-4059-8DE1-2CE290EE8161}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86831107-6932-4059-8DE1-2CE290EE8161}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86831107-6932-4059-8DE1-2CE290EE8161}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86831107-6932-4059-8DE1-2CE290EE8161}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{86831107-6932-4059-8DE1-2CE290EE8161} = {05421C6E-0DCD-4AE0-9F75-CD18A9603439}
-		{A9DA9E6C-32EB-498F-9226-99E668C76501} = {05421C6E-0DCD-4AE0-9F75-CD18A9603439}
 	EndGlobalSection
 EndGlobal

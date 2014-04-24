@@ -25,7 +25,12 @@ namespace NetMessage.NetMQ.Tcp
         public void Received()
         {
             Action(ReceivedType);            
-        }       
+        }
+
+        public void SwapOwner(ref StateMachine owner, ref int ownerSourceId)
+        {
+            SwapStateMachineOwner(ref owner, ref ownerSourceId);
+        }
 
         public abstract bool IsIdle { get; }
 

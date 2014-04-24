@@ -53,24 +53,32 @@ namespace NetMessage.Core.AsyncIO
                 m_onLeave(this);
             }
 
-            var eventsTo = m_eventsTo;
-            m_eventsTo = new Queue<StateMachineEvent>();
+            Queue<StateMachineEvent> eventsTo = null;
+
+            if (m_eventsTo.Count > 0)
+            {
+                eventsTo = m_eventsTo;
+                m_eventsTo = new Queue<StateMachineEvent>();
+            }                        
 
             Monitor.Exit(m_sync);
 
-            while (eventsTo.Count > 0)
+            if (eventsTo != null)
             {
-                var @event = eventsTo.Dequeue();
+                while (eventsTo.Count > 0)
+                {
+                    var @event = eventsTo.Dequeue();
 
-                @event.StateMachine.Context.Enter();
-                try
-                {
-                    @event.Process();
+                    @event.StateMachine.Context.Enter();
+                    try
+                    {
+                        @event.Process();
+                    }
+                    finally
+                    {
+                        @event.StateMachine.Context.Leave();
+                    }
                 }
-                finally
-                {
-                    @event.StateMachine.Context.Leave();
-                }                               
             }
         }      
 
