@@ -14,7 +14,7 @@ namespace NetMessage.NetMQ.Tcp
     /// Doesn't support message size larger than 8192
     /// </summary>
     public class DecoderV2 : DecoderBase
-    {                
+    {
         enum State
         {
             Idle = 1,
@@ -22,15 +22,20 @@ namespace NetMessage.NetMQ.Tcp
             ReadingOneByteSize,
             ReadingEightByteSize,
             ReadingBody,
-            Done,            
+            Done,
         }
 
         public const int ReceiveBufferSize = 1024 * 8;
+
+        private const int NextAction = 2;
 
         private StateMachineEvent m_doneEvent;
         private State m_state;
 
         private byte[] m_receiveBuffer;
+        private int m_bytesReceived;
+        private int m_position;
+        
         private bool m_isMore;
         private int m_size;
 
@@ -43,8 +48,10 @@ namespace NetMessage.NetMQ.Tcp
             m_receiveBuffer = new byte[ReceiveBufferSize];
             m_state = State.Idle;
             m_doneEvent = new StateMachineEvent();
+            m_bytesReceived = 0;
+            m_position = 0;
         }
-               
+
         public override bool IsIdle
         {
             get
@@ -54,9 +61,9 @@ namespace NetMessage.NetMQ.Tcp
         }
 
         public override void Start(USocket usocket, NetMQMessage message)
-        {            
+        {
             Debug.Assert(m_state == State.Idle);
-            
+
             m_usocket = usocket;
             m_message = message;
 
@@ -64,19 +71,148 @@ namespace NetMessage.NetMQ.Tcp
         }
 
         public override void Stop()
-        {            
+        {
             StopStateMachine();
         }
-       
+
         protected override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
-                Debug.Assert(m_state == State.Done || m_state == State.ReadingFlag);                
+                Debug.Assert(m_state == State.Done || m_state == State.ReadingFlag);
 
                 m_state = State.Idle;
                 Stopped(StoppedEvent);
             }
+        }
+
+        private void ReadFlag()
+        {
+            if (m_bytesReceived - m_position == 0)
+            {
+                ReceiveMore();
+            }
+            else
+            {
+                int flag = m_receiveBuffer[m_position];
+                m_position++;
+
+                m_isMore = (flag & 1) == 1;
+
+                if ((flag & 2) == 2)
+                {
+                    m_state = State.ReadingEightByteSize;
+                }
+                else
+                {
+                    m_state = State.ReadingOneByteSize;
+                }
+
+                Action(NextAction);
+            }
+        }
+
+        private void ReadOneByteSize()
+        {
+            if (m_bytesReceived - m_position == 0)
+            {
+                ReceiveMore();
+            }
+            else
+            {
+                m_size = m_receiveBuffer[m_position];
+                m_position++;
+
+                m_state = State.ReadingBody;
+                Action(NextAction);
+            }
+        }
+
+        private void ReadEightByteSize()
+        {
+            // check if we have 8 bytes to read
+            if (m_bytesReceived - m_position < 8)
+            {
+                ReceiveMore(8 - (m_bytesReceived - m_position));
+            }
+            else
+            {
+                long size = ReadLong(m_receiveBuffer, m_position);
+
+                m_position += 8;
+                m_size = (int)size;
+
+                m_state = State.ReadingBody;
+                Action(NextAction);
+            }
+        }
+
+        private void ReadBody()
+        {
+            if (m_size > ReceiveBufferSize)
+            {
+                Debug.Assert(false, "Frame size too large");
+                Raise(m_doneEvent, DecoderBase.ErrorEvent);
+                m_state = State.Done;
+            }
+            else
+            {
+                int bytesLeft = m_bytesReceived - m_position;
+
+                if (bytesLeft < m_size)
+                {                    
+                    ReceiveMore(m_size - bytesLeft);
+                }
+                else
+                {
+                    if (m_size == 0)
+                    {
+                        m_message.AppendEmptyFrame();
+                    }
+                    else
+                    {                        
+                        byte[] buffer = new byte[m_size];
+                        Buffer.BlockCopy(m_receiveBuffer, m_position, buffer, 0, m_size);
+                        m_message.Append(buffer);
+
+                        m_position += m_size;
+                    }
+
+                    if (m_isMore)
+                    {
+                        m_state = State.ReadingFlag;
+                        Action(NextAction);
+                    }
+                    else
+                    {
+                        m_message = null;
+                        Raise(m_doneEvent, DecoderBase.MessageReceivedEvent);
+                        m_state = State.Done;
+                    }
+                }
+            }
+        }
+        
+        private void ReceiveMore(int bytesNeed = 1)
+        {
+            int minimumToReceive = bytesNeed;
+
+            if (minimumToReceive < 512)
+            {
+                minimumToReceive = 512;
+            }
+
+            if (m_bytesReceived + minimumToReceive > ReceiveBufferSize)
+            {
+                m_bytesReceived = m_bytesReceived - m_position;
+
+                // copy the data to the begining of the buffer
+                Buffer.BlockCopy(m_receiveBuffer, m_position, m_receiveBuffer, 0, m_bytesReceived);
+
+                m_position = 0;
+            }
+
+            m_usocket.Receive(m_receiveBuffer, m_bytesReceived, ReceiveBufferSize - m_bytesReceived);
         }
 
         protected override void Handle(int sourceId, int type, StateMachine source)
@@ -89,9 +225,10 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case StartAction:                                    
-                                    m_usocket.Receive(m_receiveBuffer, 0, 1);
+                                case StartAction:
                                     m_state = State.ReadingFlag;
+                                    Action(NextAction);
+
                                     break;
                             }
                             break;
@@ -103,23 +240,13 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case ReceivedType:
-                                    int flag = m_receiveBuffer[0];
-
-                                    m_isMore = (flag & 1) == 1;
-
-                                    if ((flag & 2) == 2)
-                                    {
-                                        m_usocket.Receive(m_receiveBuffer, 0, 8);
-                                        m_state = State.ReadingEightByteSize;
-                                    }
-                                    else
-                                    {
-                                        m_usocket.Receive(m_receiveBuffer, 0, 1);
-                                        m_state = State.ReadingOneByteSize;
-                                    }
-
-                                    break;                               
+                                case ReceivedAction:
+                                    m_bytesReceived += m_usocket.BytesReceived;
+                                    ReadFlag();
+                                    break;
+                                case NextAction:
+                                    ReadFlag();
+                                    break;
                             }
                             break;
                     }
@@ -131,32 +258,13 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case ReceivedType:
-                                    m_size = m_receiveBuffer[0];
-
-                                    if (m_size > 0)
-                                    {
-                                        m_usocket.Receive(m_receiveBuffer, 0, m_size);
-                                        m_state = State.ReadingBody;    
-                                    }
-                                    else
-                                    {
-                                        m_message.AppendEmptyFrame();
-
-                                        if (m_isMore)
-                                        {
-                                            m_usocket.Receive(m_receiveBuffer, 0, 1);
-                                            m_state = State.ReadingFlag;
-                                        }
-                                        else
-                                        {
-                                            m_message = null;
-                                            Raise(m_doneEvent, DecoderBase.MessageReceivedEvent);
-                                            m_state = State.Done;
-                                        }
-                                    }
-                                                                        
-                                    break;                              
+                                case ReceivedAction:
+                                    m_bytesReceived += m_usocket.BytesReceived;
+                                    ReadOneByteSize();
+                                    break;
+                                case NextAction:
+                                    ReadOneByteSize();
+                                    break;
                             }
                             break;
                     }
@@ -168,22 +276,13 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case ReceivedType:
-
-                                    long size = ReadLong(m_receiveBuffer, 0);
-
-                                    if (size > ReceiveBufferSize)
-                                    {
-                                        // TODO: support large messages
-                                        m_state = State.Done;
-                                        Raise(m_doneEvent, DecoderBase.ErrorEvent);
-                                    }
-                                    m_size = (int)size;
-
-                                    m_usocket.Receive(m_receiveBuffer, 0, m_size);
-                                    m_state = State.ReadingBody;
-
-                                    break;                                
+                                case ReceivedAction:
+                                    m_bytesReceived += m_usocket.BytesReceived;
+                                    ReadEightByteSize();
+                                    break;
+                                case NextAction:
+                                    ReadEightByteSize();
+                                    break;
                             }
                             break;
                     }
@@ -194,25 +293,13 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case ReceivedType:
-
-                                    byte[] buffer = new byte[m_size];
-                                    Buffer.BlockCopy(m_receiveBuffer, 0, buffer, 0, m_size);
-                                    m_message.Append(buffer);
-
-                                    if (m_isMore)
-                                    {
-                                        m_usocket.Receive(m_receiveBuffer, 0, 1);
-                                        m_state = State.ReadingFlag;
-                                    }
-                                    else
-                                    {
-                                        m_message = null;                                        
-                                        Raise(m_doneEvent, DecoderBase.MessageReceivedEvent);
-                                        m_state = State.Done;
-                                    }
-
-                                    break;                                
+                                case ReceivedAction:
+                                    m_bytesReceived += m_usocket.BytesReceived;
+                                    ReadBody();
+                                    break;
+                                case NextAction:
+                                    ReadBody();
+                                    break;
                             }
                             break;
                     }

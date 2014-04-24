@@ -263,16 +263,17 @@ namespace NetMessage.Core.AsyncIO
         {
             Debug.Assert(m_state == State.Active);
 
-            m_out.SocketAsyncEventArgs.BufferList = null;
-            m_out.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);
+            m_out.SocketAsyncEventArgs.BufferList = new List<ArraySegment<byte>>
+            {
+                new ArraySegment<byte>(buffer, offset,count)
+            };
             SendInner();
         }
 
         public void Send(IList<ArraySegment<byte>> items)
         {
             Debug.Assert(m_state == State.Active);
-
-            m_out.SocketAsyncEventArgs.SetBuffer(null,0,0);
+            
             m_out.SocketAsyncEventArgs.BufferList = items;
             SendInner();
         }

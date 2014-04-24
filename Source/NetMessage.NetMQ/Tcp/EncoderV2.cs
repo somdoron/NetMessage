@@ -75,8 +75,7 @@ namespace NetMessage.NetMQ.Tcp
                     frameHeader = new byte[9];
                     frameHeader[0] = 3;
 
-                    Buffer.BlockCopy(BitConverter.GetBytes((long)IPAddress.HostToNetworkOrder(frame.MessageSize)),
-                        0, frameHeader, 1, 8);
+                    PutLong(frameHeader, 1, frame.MessageSize);
                 }
                 else
                 {
@@ -96,8 +95,7 @@ namespace NetMessage.NetMQ.Tcp
                 frameHeader = new byte[9];
                 frameHeader[0] = 2;
 
-                Buffer.BlockCopy(BitConverter.GetBytes((long)IPAddress.HostToNetworkOrder(frame.MessageSize)),
-                    0, frameHeader, 1, 8);
+                PutLong(frameHeader, 1, frame.MessageSize);
             }
             else
             {
@@ -112,6 +110,18 @@ namespace NetMessage.NetMQ.Tcp
             m_usocket.Send(bufferList);
 
             m_state = State.Sending;
+        }
+
+        private void PutLong(byte[] buffer, int offset, long value)
+        {
+            buffer[offset] = (byte)(((value) >> 56) & 0xff);
+            buffer[offset + 1] = (byte)(((value) >> 48) & 0xff);
+            buffer[offset + 2] = (byte)(((value) >> 40) & 0xff);
+            buffer[offset + 3] = (byte)(((value) >> 32) & 0xff);
+            buffer[offset + 4] = (byte)(((value) >> 24) & 0xff);
+            buffer[offset + 5] = (byte)(((value) >> 16) & 0xff);
+            buffer[offset + 6] = (byte)(((value) >> 8) & 0xff);
+            buffer[offset + 7] = (byte)(value & 0xff);
         }
 
         protected override void Handle(int sourceId, int type, StateMachine source)

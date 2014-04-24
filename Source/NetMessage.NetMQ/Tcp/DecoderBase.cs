@@ -13,7 +13,7 @@ namespace NetMessage.NetMQ.Tcp
         public const int StoppedEvent = 2;
         public const int ErrorEvent = 3;
 
-        protected const int ReceivedType = 1;
+        protected const int ReceivedAction = 1;
 
 
         protected DecoderBase(int sourceId, StateMachine owner)
@@ -24,7 +24,7 @@ namespace NetMessage.NetMQ.Tcp
         
         public void Received()
         {
-            Action(ReceivedType);            
+            Action(ReceivedAction);            
         }
 
         public void SwapOwner(ref StateMachine owner, ref int ownerSourceId)
