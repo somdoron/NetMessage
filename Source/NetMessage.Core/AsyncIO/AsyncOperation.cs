@@ -62,22 +62,25 @@ namespace NetMessage.Core.AsyncIO
             Interlocked.Exchange(ref m_state, (int)State.Idle);
         }
 
-        public void Waiting()
+        public void Waiting(bool feed=true)
         {
             State state = (State)Interlocked.CompareExchange(ref m_state, (int)State.Waiting, (int)State.Pending);
 
-            if (state == State.Idle)
+            if (feed)
             {
-                int action = DoneEvent;
-
-                if (SocketAsyncEventArgs.SocketError != SocketError.Success ||
-                    (m_zeroIsError && SocketAsyncEventArgs.BytesTransferred == 0))
+                if (state == State.Idle)
                 {
-                    action = ErrorEvent;
-                }
+                    int action = DoneEvent;
 
-                Owner.Feed(SourceId, action, this);
-            }
+                    if (SocketAsyncEventArgs.SocketError != SocketError.Success ||
+                        (m_zeroIsError && SocketAsyncEventArgs.BytesTransferred == 0))
+                    {
+                        action = ErrorEvent;
+                    }
+
+                    Owner.Feed(SourceId, action, this);
+                }
+            }            
         }
 
         private void OnCompleted(object sender, SocketAsyncEventArgs e)

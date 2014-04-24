@@ -25,6 +25,7 @@ namespace NetMessage.NetMQ.Tcp
         private State m_state;
         private StateMachineEvent m_doneEvent;
         private bool m_signalPipe;
+        private List<ArraySegment<byte>> m_bufferList;
 
         public EncoderV2(int sourceId, StateMachine owner, PipeBase<NetMQMessage> pipeBase)
             : base(sourceId, owner)
@@ -32,6 +33,7 @@ namespace NetMessage.NetMQ.Tcp
             m_pipeBase = pipeBase;
             m_state = State.Idle;
             m_doneEvent = new StateMachineEvent();
+            m_bufferList = new List<ArraySegment<byte>>();
         }
 
         //public override bool IsIdle
@@ -49,22 +51,14 @@ namespace NetMessage.NetMQ.Tcp
             m_signalPipe = signalPipe;
 
             StartStateMachine();
-        }       
-
-        protected override void Shutdown(int sourceId, int type, Core.AsyncIO.StateMachine source)
-        {
-            if (sourceId == ActionSourceId && type == StopAction)
-            {
-                m_state = State.Idle;     
-            }           
-        }
+        }              
 
         private void Send()
         {
             byte[] frameHeader;
-            NetMQFrame frame;
+            NetMQFrame frame;            
 
-            List<ArraySegment<byte>> bufferList = new List<ArraySegment<byte>>(m_message.FrameCount * 2);
+            m_bufferList.Clear();
 
             for (int i = 0; i < m_message.FrameCount - 1; i++)
             {
@@ -84,8 +78,8 @@ namespace NetMessage.NetMQ.Tcp
                     frameHeader[1] = (byte)frame.MessageSize;
                 }
 
-                bufferList.Add(new ArraySegment<byte>(frameHeader));
-                bufferList.Add(frame.Buffer);
+                m_bufferList.Add(new ArraySegment<byte>(frameHeader));
+                m_bufferList.Add(frame.Buffer);
             }
 
             frame = m_message.Last;
@@ -104,12 +98,19 @@ namespace NetMessage.NetMQ.Tcp
                 frameHeader[1] = (byte)frame.MessageSize;
             }
 
-            bufferList.Add(new ArraySegment<byte>(frameHeader));
-            bufferList.Add(frame.Buffer);
+            m_bufferList.Add(new ArraySegment<byte>(frameHeader));
+            m_bufferList.Add(frame.Buffer);
 
-            m_usocket.Send(bufferList);
+            bool completedSync = m_usocket.Send(m_bufferList);
 
-            m_state = State.Sending;
+            if (completedSync)
+            {
+                Complete();
+            }
+            else
+            {
+                m_state = State.Sending;    
+            }            
         }
 
         private void PutLong(byte[] buffer, int offset, long value)
@@ -122,6 +123,29 @@ namespace NetMessage.NetMQ.Tcp
             buffer[offset + 5] = (byte)(((value) >> 16) & 0xff);
             buffer[offset + 6] = (byte)(((value) >> 8) & 0xff);
             buffer[offset + 7] = (byte)(value & 0xff);
+        }
+
+        private void Complete()
+        {
+            m_state = State.Done;
+            m_message = null;
+
+            if (m_signalPipe)
+            {
+                m_pipeBase.OnSent();
+            }
+
+            Raise(m_doneEvent, MessageSentEvent);
+            StopStateMachine();            
+        }
+
+        protected override void Shutdown(int sourceId, int type, Core.AsyncIO.StateMachine source)
+        {
+            if (sourceId == ActionSourceId && type == StopAction)
+            {
+                m_state = State.Idle;
+                StoppedNoEvent();
+            }
         }
 
         protected override void Handle(int sourceId, int type, StateMachine source)
@@ -148,17 +172,7 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case MessageSentEvent:
-                                    m_state = State.Done;
-                                    m_message = null;
-                                    
-                                    if (m_signalPipe)
-                                    {
-                                        m_pipeBase.OnSent();    
-                                    }
-                                    
-                                    Raise(m_doneEvent, MessageSentEvent);
-                                    StopStateMachine();
-                                    StoppedNoEvent();
+                                    Complete();
                                     break;
                             }
                             break;

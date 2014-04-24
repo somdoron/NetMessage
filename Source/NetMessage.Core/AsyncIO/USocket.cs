@@ -204,8 +204,8 @@ namespace NetMessage.Core.AsyncIO
                 if (!listener.m_in.IsIdle)
                 {
                     m_acceptSocket = listener;
-                    listener.m_acceptSocket = this;   
-                }                
+                    listener.m_acceptSocket = this;
+                }
             }
             else
             {
@@ -244,8 +244,12 @@ namespace NetMessage.Core.AsyncIO
 
             Action(ConnectAction);
 
-            m_out.SocketAsyncEventArgs.RemoteEndPoint = endpoint;
+            if (m_out.SocketAsyncEventArgs.BufferList != null)
+            {
+                m_out.SocketAsyncEventArgs.BufferList = null;
+            }
 
+            m_out.SocketAsyncEventArgs.RemoteEndPoint = endpoint;
             m_out.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
 
             m_out.Start(false);
@@ -270,15 +274,15 @@ namespace NetMessage.Core.AsyncIO
             }
         }
 
-        public void Send(byte[] buffer, int offset, int count)
+        public bool Send(byte[] buffer, int offset, int count)
         {
-            Send(new List<ArraySegment<byte>>
+            return Send(new List<ArraySegment<byte>>
             {
                 new ArraySegment<byte>(buffer, offset,count)
             });
         }
 
-        public void Send(IList<ArraySegment<byte>> items)
+        public bool Send(IList<ArraySegment<byte>> items)
         {
             Debug.Assert(m_state == State.Active);
 
@@ -289,7 +293,9 @@ namespace NetMessage.Core.AsyncIO
 
             if (isPending)
             {
-                m_out.Waiting();
+                m_out.Waiting(false);
+
+                return m_out.IsIdle;
             }
             else
             {
@@ -304,6 +310,8 @@ namespace NetMessage.Core.AsyncIO
                     Feed(OutSourceId, DoneAction, null);
                 }
             }
+
+            return false;
         }
 
         public void Receive(byte[] buffer, int offset, int count)

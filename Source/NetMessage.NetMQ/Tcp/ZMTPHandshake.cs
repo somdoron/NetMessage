@@ -155,8 +155,19 @@ namespace NetMessage.NetMQ.Tcp
                                 case StartAction:
                                     // TODO: this should be an option 
                                     m_timer.Start(20000);
-                                    m_usocket.Send(m_outGreeting, 0, m_outGreeting.Length);
-                                    m_state = State.Sending;
+                                    bool completedSync = m_usocket.Send(m_outGreeting, 0, m_outGreeting.Length);
+
+                                    if (completedSync)
+                                    {
+                                        m_inGreetingReceived = 0;
+                                        m_usocket.Receive(m_inGreeting, 0, GreetingSize);
+                                        m_state = State.Receiving;
+                                    }
+                                    else
+                                    {
+                                        m_state = State.Sending;    
+                                    }
+                                    
                                     break;
                             }
                             break;

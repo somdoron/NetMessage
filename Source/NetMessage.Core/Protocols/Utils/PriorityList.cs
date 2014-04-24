@@ -165,7 +165,7 @@ namespace NetMessage.Core.Protocols.Utils
 
             var currentPipe = slot.Current;
             
-            int index = (slot.Pipes.IndexOf(slot.Current) + 1)%slot.Pipes.Count;
+            int index = (slot.Pipes.IndexOf(slot.Current) + 1) % slot.Pipes.Count;
 
             if (!release || slot.Pipes.Count > 1)
             {

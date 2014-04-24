@@ -132,8 +132,8 @@ namespace NetMessage.Core.AsyncIO
 
         protected void StartStateMachine()
         {
-            Handle(ActionSourceId, StartAction, null);
             m_state = State.Active;
+            Handle(ActionSourceId, StartAction, null);            
         }
 
         protected void StopStateMachine()
