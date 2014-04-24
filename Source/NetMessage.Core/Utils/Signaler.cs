@@ -4,11 +4,11 @@ namespace NetMessage.Core.Utils
 {
     public class Signaler
     {
-        private ManualResetEvent m_manualResetEvent = new ManualResetEvent(false);        
+        private ManualResetEventSlim m_manualResetEvent = new ManualResetEventSlim(false);        
 
         internal bool Wait(int timeout)
         {
-            return m_manualResetEvent.WaitOne(timeout);
+            return m_manualResetEvent.Wait(timeout);
         }
 
         internal void Signal()

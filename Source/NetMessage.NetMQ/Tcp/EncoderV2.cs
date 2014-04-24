@@ -3,14 +3,17 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core.AsyncIO;
+using NetMessage.Core.Transport;
 
 namespace NetMessage.NetMQ.Tcp
 {
     public class EncoderV2 : EncoderBase
     {
+        private readonly PipeBase<NetMQMessage> m_pipeBase;
         private USocket m_usocket;
         private NetMQMessage m_message;
 
@@ -21,42 +24,39 @@ namespace NetMessage.NetMQ.Tcp
 
         private State m_state;
         private StateMachineEvent m_doneEvent;
+        private bool m_signalPipe;
 
-        public EncoderV2(int sourceId, StateMachine owner)
+        public EncoderV2(int sourceId, StateMachine owner, PipeBase<NetMQMessage> pipeBase)
             : base(sourceId, owner)
         {
+            m_pipeBase = pipeBase;
             m_state = State.Idle;
             m_doneEvent = new StateMachineEvent();
         }
 
-        public override bool IsIdle
-        {
-            get
-            {
-                return IsStateMachineIdle;
-            }
-        }
+        //public override bool IsIdle
+        //{
+        //    get
+        //    {
+        //        return IsStateMachineIdle;
+        //    }
+        //}
 
-        public override void Start(Core.AsyncIO.USocket usocket, NetMQMessage message)
+        public override void Start(USocket usocket, NetMQMessage message, bool signalPipe)
         {
             m_usocket = usocket;
             m_message = message;
+            m_signalPipe = signalPipe;
 
             StartStateMachine();
-        }
-
-        public override void Stop()
-        {
-            StopStateMachine();
-        }
+        }       
 
         protected override void Shutdown(int sourceId, int type, Core.AsyncIO.StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
-                m_state = State.Idle;
-                Stopped(StoppedEvent);
-            }
+                m_state = State.Idle;     
+            }           
         }
 
         private void Send()
@@ -150,7 +150,15 @@ namespace NetMessage.NetMQ.Tcp
                                 case MessageSentEvent:
                                     m_state = State.Done;
                                     m_message = null;
+                                    
+                                    if (m_signalPipe)
+                                    {
+                                        m_pipeBase.OnSent();    
+                                    }
+                                    
                                     Raise(m_doneEvent, MessageSentEvent);
+                                    StopStateMachine();
+                                    StoppedNoEvent();
                                     break;
                             }
                             break;

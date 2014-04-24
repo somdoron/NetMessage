@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace NetMessage.Core.AsyncIO
@@ -16,16 +17,17 @@ namespace NetMessage.Core.AsyncIO
 
         enum State
         {
-            Idle = 1, Active, ActiveZeroIsError   
+            Idle = 1, Pending, Waiting
         }
 
-        private State m_state;
-
+        private int m_state;
+        private bool m_zeroIsError;        
+        
         public AsyncOperation(int sourceId, StateMachine owner)  : base(sourceId, owner)
         {
             SourceId = sourceId;
             Owner = owner;
-            m_state = State.Idle;
+            m_state = (int)State.Idle;
 
             SocketAsyncEventArgs = new SocketAsyncEventArgs();
             SocketAsyncEventArgs.Completed += OnCompleted;
@@ -39,8 +41,8 @@ namespace NetMessage.Core.AsyncIO
 
         public bool IsIdle
         {
-            get { return m_state == State.Idle; }
-        }
+            get { return m_state == (int)State.Idle; }
+        }       
 
         public override void Dispose()
         {
@@ -50,26 +52,58 @@ namespace NetMessage.Core.AsyncIO
 
         public void Start(bool zeroIsError)
         {
-            m_state = zeroIsError ? State.ActiveZeroIsError : State.Active;
+            Interlocked.Exchange(ref m_state, (int) State.Pending);
+            m_zeroIsError = false;
+
         }
 
-        private void OnCompleted(object sender, SocketAsyncEventArgs e)
+        public void Stop()
         {
-            Owner.Context.Enter();
+            Interlocked.Exchange(ref m_state, (int)State.Idle);
+        }
 
-            try
+        public void Waiting()
+        {
+            State state = (State)Interlocked.CompareExchange(ref m_state, (int)State.Waiting, (int)State.Pending);
+
+            if (state == State.Idle)
             {
-                Debug.Assert(m_state != State.Idle);
-
                 int action = DoneEvent;
 
-                if (e.SocketError != SocketError.Success ||
-                    (m_state == State.ActiveZeroIsError && e.BytesTransferred == 0))
+                if (SocketAsyncEventArgs.SocketError != SocketError.Success ||
+                    (m_zeroIsError && SocketAsyncEventArgs.BytesTransferred == 0))
                 {
                     action = ErrorEvent;
                 }
 
-                m_state = State.Idle;
+                Owner.Feed(SourceId, action, this);
+            }
+        }
+
+        private void OnCompleted(object sender, SocketAsyncEventArgs e)
+        {
+            // if the operation completed synced
+            if (Interlocked.CompareExchange(ref m_state, (int)State.Idle, (int)State.Pending) == (int)State.Pending)
+            {
+                // async operation canceled 
+                return;
+            }
+
+            Owner.Context.Enter();            
+
+            try
+            {               
+                Debug.Assert(m_state != (int)State.Idle);
+
+                int action = DoneEvent;
+
+                if (e.SocketError != SocketError.Success ||
+                    (m_zeroIsError && e.BytesTransferred == 0))
+                {
+                    action = ErrorEvent;
+                }
+
+                Interlocked.Exchange(ref m_state, (int) State.Idle);                
 
                 Owner.Feed(SourceId, action, this);
             }

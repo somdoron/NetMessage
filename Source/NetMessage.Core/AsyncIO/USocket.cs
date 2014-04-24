@@ -193,16 +193,24 @@ namespace NetMessage.Core.AsyncIO
 
             listener.m_in.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
 
+            listener.m_in.Start(false);
+
             bool isPending = listener.m_socket.AcceptAsync(listener.m_in.SocketAsyncEventArgs);
 
             if (isPending)
             {
-                m_acceptSocket = listener;
-                listener.m_acceptSocket = this;
-                listener.m_in.Start(false);
+                listener.m_in.Waiting();
+
+                if (!listener.m_in.IsIdle)
+                {
+                    m_acceptSocket = listener;
+                    listener.m_acceptSocket = this;   
+                }                
             }
             else
             {
+                listener.m_in.Stop();
+
                 if (listener.m_in.SocketAsyncEventArgs.SocketError == SocketError.Success)
                 {
                     listener.Action(DoneAction);
@@ -240,14 +248,17 @@ namespace NetMessage.Core.AsyncIO
 
             m_out.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
 
+            m_out.Start(false);
             bool isPending = m_socket.ConnectAsync(m_out.SocketAsyncEventArgs);
 
             if (isPending)
             {
-                m_out.Start(false);
+                m_out.Waiting();
             }
             else
             {
+                m_out.Stop();
+
                 if (m_out.SocketAsyncEventArgs.SocketError == SocketError.Success)
                 {
                     Action(DoneAction);
@@ -261,35 +272,29 @@ namespace NetMessage.Core.AsyncIO
 
         public void Send(byte[] buffer, int offset, int count)
         {
-            Debug.Assert(m_state == State.Active);
-
-            m_out.SocketAsyncEventArgs.BufferList = new List<ArraySegment<byte>>
+            Send(new List<ArraySegment<byte>>
             {
                 new ArraySegment<byte>(buffer, offset,count)
-            };
-            SendInner();
+            });
         }
 
         public void Send(IList<ArraySegment<byte>> items)
         {
             Debug.Assert(m_state == State.Active);
-            
+
             m_out.SocketAsyncEventArgs.BufferList = items;
-            SendInner();
-        }
 
-        private void SendInner()
-        {
-            m_out.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
-
+            m_out.Start(false);
             bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);
 
             if (isPending)
             {
-                m_out.Start(false);
+                m_out.Waiting();
             }
             else
             {
+                m_out.Stop();
+
                 if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
                 {
                     Action(ErrorAction);
@@ -307,16 +312,18 @@ namespace NetMessage.Core.AsyncIO
 
             m_in.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);
 
-            m_in.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
+            m_in.Start(true);
 
-            bool isPending = m_socket.ReceiveAsync(m_in.SocketAsyncEventArgs);            
+            bool isPending = m_socket.ReceiveAsync(m_in.SocketAsyncEventArgs);
 
             if (isPending)
             {
-                m_in.Start(true);
+                m_in.Waiting();
             }
             else
             {
+                m_out.Stop();
+
                 if (m_in.SocketAsyncEventArgs.SocketError != SocketError.Success)
                 {
                     Action(ErrorAction);

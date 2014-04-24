@@ -153,7 +153,7 @@ namespace NetMessage.NetMQ.Tcp
             Debug.Assert(m_state == State.Active);
             Debug.Assert(m_outState == OutState.Idle);
 
-            m_encoder.Start(m_usocket, message);
+            m_encoder.Start(m_usocket, message, true);
 
             m_outState = OutState.Sending;
 
@@ -183,12 +183,7 @@ namespace NetMessage.NetMQ.Tcp
                 if (m_decoder != null && !m_decoder.IsIdle)
                 {
                     m_decoder.Stop();
-                }
-
-                if (m_encoder != null && !m_encoder.IsIdle)
-                {
-                    m_encoder.Stop();
-                }
+                }                
 
                 if (!m_handshake.IsIdle)
                 {
@@ -200,7 +195,7 @@ namespace NetMessage.NetMQ.Tcp
 
             if (m_state == State.Stopping)
             {
-                if ((m_decoder == null || m_decoder.IsIdle) && (m_encoder == null || m_encoder.IsIdle) && m_handshake.IsIdle)
+                if ((m_decoder == null || m_decoder.IsIdle) && m_handshake.IsIdle)
                 {
                     m_usocket.SwapOwner(ref m_usocketOwner, ref m_usocketOwnerSourceId);
                     m_usocket = null;
@@ -310,16 +305,9 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case EncoderBase.MessageSentEvent:
-                                    Debug.Assert(m_outState == OutState.Sending);
-                                    m_encoder.Stop();
-                                    m_outState = OutState.Stopping;
-                                    break;
-                                case EncoderBase.StoppedEvent:
-                                    Debug.Assert(m_outState == OutState.Stopping);
-
+                                    Debug.Assert(m_outState == OutState.Sending);                                    
                                     m_outState = OutState.Idle;
-                                    m_pipe.OnSent();
-                                    break;
+                                    break;                                
                                 case EncoderBase.ErrorEvent:
                                     m_pipe.Stop();
                                     Raise(m_doneEvent, ErrorEvent);

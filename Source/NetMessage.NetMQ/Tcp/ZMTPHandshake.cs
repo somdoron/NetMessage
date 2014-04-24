@@ -19,7 +19,6 @@ namespace NetMessage.NetMQ.Tcp
             Sending,
             Receiving,
             SendingIdentity,
-            StoppingEncoder,
             ReceivingIdentity,
             StoppingDecoder,
             StoppingTimerError,
@@ -94,7 +93,7 @@ namespace NetMessage.NetMQ.Tcp
             {
                 return m_decoder;
             }
-           
+
         }
 
         public override EncoderBase Encoder
@@ -103,7 +102,7 @@ namespace NetMessage.NetMQ.Tcp
             {
                 return m_encoder;
             }
-            
+
         }
 
         public override void Start(USocket socket, PipeBase<NetMQMessage> pipe)
@@ -238,13 +237,13 @@ namespace NetMessage.NetMQ.Tcp
                                         }
 
                                         // creating the encoder
-                                        m_encoder = new EncoderV2(EncoderSourceId, this);
+                                        m_encoder = new EncoderV2(EncoderSourceId, this, m_pipeBase);
 
                                         // sending the identity message, currently always sending empty message
                                         NetMQMessage identityMessage = new NetMQMessage();
                                         identityMessage.AppendEmptyFrame();
 
-                                        Encoder.Start(m_usocket, identityMessage);
+                                        Encoder.Start(m_usocket, identityMessage, false);
                                         m_state = State.SendingIdentity;
                                     }
                                     break;
@@ -278,10 +277,8 @@ namespace NetMessage.NetMQ.Tcp
                                     break;
                                 case USocket.ShutdownEvent:
                                     break;
-                                case USocket.ErrorEvent:
-                                    // TODO: stop encoder as well
-                                    m_timer.Stop();
-                                    m_encoder.Stop();
+                                case USocket.ErrorEvent:                                    
+                                    m_timer.Stop();                                    
                                     m_state = State.StoppingTimerError;
                                     break;
                             }
@@ -290,56 +287,29 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case EncoderBase.MessageSentEvent:
-                                    Encoder.Stop();
-                                    m_state = State.StoppingEncoder;
-                                    break;
-                                case EncoderBase.ErrorEvent:
-                                    m_timer.Stop();
-                                    m_encoder.Stop();
-                                    m_state = State.StoppingTimerError;
-                                    break;
-                                    break;
-                            }
-                            break;
-                        case TimerSourceId:
-                            switch (type)
-                            {
-                                case Timer.TimeOutEvent:
-                                    m_timer.Stop();
-                                    m_encoder.Stop();
-                                    m_state = State.StoppingTimerError;
-                                    break;
-                            }
-                            break;
-                    }
-                    break;
-                case State.StoppingEncoder:
-                    switch (sourceId)
-                    {
-                        case EncoderSourceId:
-                            switch (type)
-                            {
-                                case EncoderBase.StoppedEvent:
-                                    // creating decoder
                                     m_decoder = new DecoderV2(DecoderSourceId, this);
                                     m_receivedIdentity = new NetMQMessage();
                                     Decoder.Start(m_usocket, m_receivedIdentity);
                                     m_state = State.ReceivingIdentity;
                                     break;
+                                case EncoderBase.ErrorEvent:
+                                    m_timer.Stop();                                    
+                                    m_state = State.StoppingTimerError;
+                                    break;
+                                    break;
                             }
                             break;
-
                         case TimerSourceId:
                             switch (type)
                             {
                                 case Timer.TimeOutEvent:
-                                    m_timer.Stop();
+                                    m_timer.Stop();                                    
                                     m_state = State.StoppingTimerError;
                                     break;
                             }
                             break;
                     }
-                    break;
+                    break;                
 
                 case State.ReceivingIdentity:
                     switch (sourceId)
@@ -426,11 +396,10 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case Timer.StoppedEvent:
-                                    if ((m_decoder == null || m_decoder.IsIdle) &&
-                                        (m_encoder == null || m_encoder.IsIdle))
+                                    if ((m_decoder == null || m_decoder.IsIdle))
                                     {
                                         DoneError();
-                                    }                                                                        
+                                    }
                                     break;
                             }
                             break;
@@ -438,24 +407,13 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case DecoderBase.StoppedEvent:
-                                    if ((m_encoder == null || m_encoder.IsIdle) && m_timer.IsIdle)
-                                    {
-                                        DoneError();
-                                    }
-                                break;
-                            }
-                            break;
-                        case EncoderSourceId:
-                            switch (type)
-                            {
-                                case EncoderBase.StoppedEvent:
-                                    if ((m_decoder == null || m_decoder.IsIdle) && m_timer.IsIdle)
+                                    if (m_timer.IsIdle)
                                     {
                                         DoneError();
                                     }
                                     break;
                             }
-                            break;
+                            break;                       
                     }
                     break;
                 case State.StoppingTimerDone:

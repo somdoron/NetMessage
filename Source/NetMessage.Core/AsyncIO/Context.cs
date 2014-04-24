@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -10,19 +11,20 @@ namespace NetMessage.Core.AsyncIO
     public delegate void OnContextLeaveDelegate(Context context);
 
     public class Context : IDisposable
-    {        
+    {
         private OnContextLeaveDelegate m_onLeave;
 
         private Queue<StateMachineEvent> m_events;
         private Queue<StateMachineEvent> m_eventsTo;
 
         private object m_sync;
-
+        
         public Context()
-        {            
+        {
             m_events = new Queue<StateMachineEvent>();
             m_eventsTo = new Queue<StateMachineEvent>();
-            m_sync = new object();            
+
+            m_sync = new object();
         }
 
         public void SetOnLeave(OnContextLeaveDelegate onLeave)
@@ -31,13 +33,17 @@ namespace NetMessage.Core.AsyncIO
         }
 
         public void Dispose()
-        {            
+        {
 
         }
 
         public void Enter()
-        {
+        {            
             Monitor.Enter(m_sync);
+
+            //bool taken = false;
+            //m_spinLock.Enter(ref taken);
+            //Debug.Assert(taken);
         }
 
         public void Leave()
@@ -59,9 +65,10 @@ namespace NetMessage.Core.AsyncIO
             {
                 eventsTo = m_eventsTo;
                 m_eventsTo = new Queue<StateMachineEvent>();
-            }                        
+            }
 
             Monitor.Exit(m_sync);
+            //m_spinLock.Exit();
 
             if (eventsTo != null)
             {
@@ -80,7 +87,7 @@ namespace NetMessage.Core.AsyncIO
                     }
                 }
             }
-        }      
+        }
 
         public void Raise(StateMachineEvent @event)
         {
