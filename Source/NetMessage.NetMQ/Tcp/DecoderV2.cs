@@ -22,8 +22,7 @@ namespace NetMessage.NetMQ.Tcp
             ReadingOneByteSize,
             ReadingEightByteSize,
             ReadingBody,
-            HasMessage,
-            Errored
+            Done,            
         }
 
         public const int ReceiveBufferSize = 1024 * 8;
@@ -73,7 +72,7 @@ namespace NetMessage.NetMQ.Tcp
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
-                Debug.Assert(m_state == State.HasMessage || m_state == State.Errored || m_state == State.ReadingFlag);                
+                Debug.Assert(m_state == State.Done || m_state == State.ReadingFlag);                
 
                 m_state = State.Idle;
                 Stopped(StoppedEvent);
@@ -153,7 +152,7 @@ namespace NetMessage.NetMQ.Tcp
                                         {
                                             m_message = null;
                                             Raise(m_doneEvent, DecoderBase.MessageReceivedEvent);
-                                            m_state = State.HasMessage;
+                                            m_state = State.Done;
                                         }
                                     }
                                                                         
@@ -176,7 +175,7 @@ namespace NetMessage.NetMQ.Tcp
                                     if (size > ReceiveBufferSize)
                                     {
                                         // TODO: support large messages
-                                        m_state = State.Errored;
+                                        m_state = State.Done;
                                         Raise(m_doneEvent, DecoderBase.ErrorEvent);
                                     }
                                     m_size = (int)size;
@@ -210,7 +209,7 @@ namespace NetMessage.NetMQ.Tcp
                                     {
                                         m_message = null;                                        
                                         Raise(m_doneEvent, DecoderBase.MessageReceivedEvent);
-                                        m_state = State.HasMessage;
+                                        m_state = State.Done;
                                     }
 
                                     break;                                

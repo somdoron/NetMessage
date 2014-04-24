@@ -15,6 +15,7 @@ namespace ConsoleApplication2
             {
                 using (NetMQSocket client = context.CreateDealerSocket())
                 {
+                    client.Options.Identity = new[] { (byte)(byte)1, (byte)1, (byte)1 };
                     client.Connect("tcp://127.0.0.1:5555");                    
 
                     Console.WriteLine("Connected");
