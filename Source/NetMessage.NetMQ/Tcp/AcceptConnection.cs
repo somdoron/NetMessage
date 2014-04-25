@@ -169,6 +169,7 @@ namespace NetMessage.NetMQ.Tcp
                                     // TODO: use direct properties instead, more .net style
                                     m_usocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, sendBuffer);
                                     m_usocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, receieBuffer);
+                                    m_usocket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, 1);
 
                                     m_listener.SwapOwner(ref m_listenerOwner, ref m_listenerOwnerSourceId);
                                     m_listener = null;

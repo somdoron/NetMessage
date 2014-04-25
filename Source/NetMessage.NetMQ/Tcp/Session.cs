@@ -153,7 +153,7 @@ namespace NetMessage.NetMQ.Tcp
             Debug.Assert(m_state == State.Active);
             Debug.Assert(m_outState == OutState.Idle);
 
-            m_encoder.Start(m_usocket, message, true);
+            m_encoder.Send(message);
 
             m_outState = OutState.Sending;
 
@@ -247,6 +247,9 @@ namespace NetMessage.NetMQ.Tcp
                                     StateMachine encoderOwner = this;
                                     int encoderSourceId = EncoderSourceId;
                                     m_encoder.SwapOwner(ref encoderOwner, ref encoderSourceId);
+
+                                    m_encoder.NoDelay = false;
+                                    m_encoder.SignalPipe = true;
 
                                     m_handshake.Stop();
                                     m_state = State.StoppingHandshake;

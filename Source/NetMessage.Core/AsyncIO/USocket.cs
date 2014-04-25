@@ -155,7 +155,7 @@ namespace NetMessage.Core.AsyncIO
         {
             Debug.Assert(m_state == State.Starting || m_state == State.Accepted);
 
-            m_socket.SetSocketOption(level, name, value);
+            m_socket.SetSocketOption(level, name, value);               
         }
 
         public void Bind(EndPoint endPoint)

@@ -254,7 +254,12 @@ namespace NetMessage.NetMQ.Tcp
                                         NetMQMessage identityMessage = new NetMQMessage();
                                         identityMessage.AppendEmptyFrame();
 
-                                        Encoder.Start(m_usocket, identityMessage, false);
+                                        Encoder.Start(m_usocket);
+
+                                        Encoder.SignalPipe = false;
+                                        Encoder.NoDelay = true;
+
+                                        Encoder.Send(identityMessage);
                                         m_state = State.SendingIdentity;
                                     }
                                     break;

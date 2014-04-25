@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,12 +25,29 @@ namespace NetMessage.NetMQ.RemoteThroughput
             {
                 dealerSocket.Connect(connectTo);
 
-                for (int i = 0; i != messageCount; i++)
+                var message = new NetMQMessage(1);
+                message.Append(new byte[messageSize]);
+                dealerSocket.SendMessage(message);
+
+                Stopwatch stopwatch = Stopwatch.StartNew();
+
+                for (int i = 0; i != messageCount-1; i++)
                 {
-                    var message = new NetMQMessage(1);
+                    message = new NetMQMessage(1);
                     message.Append(new byte[messageSize]);
                     dealerSocket.SendMessage(message);
                 }
+
+                stopwatch.Stop();
+
+                double messagesPerSecond = (double)messageCount / stopwatch.ElapsedMilliseconds * 1000;
+                
+                double megabits = messagesPerSecond * messageSize * 8 / 1000000;
+
+                Console.WriteLine("message size: {0} [B]", messageSize);
+                Console.WriteLine("message count: {0}", messageCount);
+                Console.WriteLine("mean throughput: {0:0.000} [msg/s]", messagesPerSecond);
+                Console.WriteLine("mean throughput: {0:0.000} [Mb/s]", megabits);
 
                 Console.ReadLine();
             }

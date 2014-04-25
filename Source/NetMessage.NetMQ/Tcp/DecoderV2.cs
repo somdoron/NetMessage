@@ -27,6 +27,8 @@ namespace NetMessage.NetMQ.Tcp
 
         public const int ReceiveBufferSize = 1024 * 8;
 
+        public const int MinimumBytesToRead = 1024*2;
+
         private const int NextAction = 2;
 
         private StateMachineEvent m_doneEvent;
@@ -197,9 +199,9 @@ namespace NetMessage.NetMQ.Tcp
         {
             int minimumToReceive = bytesNeed;
 
-            if (minimumToReceive < 512)
+            if (minimumToReceive < MinimumBytesToRead)
             {
-                minimumToReceive = 512;
+                minimumToReceive = MinimumBytesToRead;
             }
 
             if (m_bytesReceived + minimumToReceive > ReceiveBufferSize)

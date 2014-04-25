@@ -13,19 +13,28 @@ namespace NetMessage.NetMQ.Tcp
 {
     public class EncoderV2 : EncoderBase
     {
-        private readonly PipeBase<NetMQMessage> m_pipeBase;
-        private USocket m_usocket;
-        private NetMQMessage m_message;
-
         enum State
         {
-            Idle = 1, Sending, Done
+            Idle = 1, NoMessages, WaitingForMoreMessages, StoppingTimer, Sending
         }
+
+        private const int TimerSourceId = 1;
+
+        private const int MinimumMessageSize = 1000;
+        private const int SmallMessagesTimerInterval = 10;
+
+        private const int SendMessageAction = 2;
 
         private State m_state;
         private StateMachineEvent m_doneEvent;
-        private bool m_signalPipe;
-        private List<ArraySegment<byte>> m_bufferList;
+
+        private readonly PipeBase<NetMQMessage> m_pipeBase;
+        private USocket m_usocket;
+        
+        private List<ArraySegment<byte>> m_bufferList;        
+        private int m_totalPendingSize = 0;
+
+        private Timer m_timer;
 
         public EncoderV2(int sourceId, StateMachine owner, PipeBase<NetMQMessage> pipeBase)
             : base(sourceId, owner)
@@ -34,6 +43,7 @@ namespace NetMessage.NetMQ.Tcp
             m_state = State.Idle;
             m_doneEvent = new StateMachineEvent();
             m_bufferList = new List<ArraySegment<byte>>();
+            m_timer = new Timer(TimerSourceId, this);
         }
 
         //public override bool IsIdle
@@ -44,73 +54,58 @@ namespace NetMessage.NetMQ.Tcp
         //    }
         //}
 
-        public override void Start(USocket usocket, NetMQMessage message, bool signalPipe)
+        public override bool NoDelay
+        {
+            get;
+            set;
+        }
+
+        public override bool SignalPipe { get; set; }
+
+        public override void Start(USocket usocket)
         {
             m_usocket = usocket;
-            m_message = message;
-            m_signalPipe = signalPipe;
 
             StartStateMachine();
-        }              
+        }
 
-        private void Send()
+        public override void Send(NetMQMessage message)
+        {            
+            AddMessage(message);
+
+            Action(SendMessageAction);
+        }
+
+        private void AddMessage(NetMQMessage message)
         {
             byte[] frameHeader;
-            NetMQFrame frame;            
+            NetMQFrame frame;
 
-            m_bufferList.Clear();
-
-            for (int i = 0; i < m_message.FrameCount - 1; i++)
+            for (int i = 0; i < message.FrameCount; i++)
             {
-                frame = m_message[i];
+                frame = message[i];
+
+                int isLast = i == message.FrameCount - 1 ? 0 : 1;
 
                 if (frame.MessageSize > 255)
                 {
                     frameHeader = new byte[9];
-                    frameHeader[0] = 3;
+                    frameHeader[0] = (byte)(2 | isLast);
 
                     PutLong(frameHeader, 1, frame.MessageSize);
                 }
                 else
                 {
                     frameHeader = new byte[2];
-                    frameHeader[0] = 1;
+                    frameHeader[0] = (byte)isLast;
                     frameHeader[1] = (byte)frame.MessageSize;
                 }
 
                 m_bufferList.Add(new ArraySegment<byte>(frameHeader));
                 m_bufferList.Add(frame.Buffer);
+
+                m_totalPendingSize += frame.MessageSize;
             }
-
-            frame = m_message.Last;
-
-            if (frame.MessageSize > 255)
-            {
-                frameHeader = new byte[9];
-                frameHeader[0] = 2;
-
-                PutLong(frameHeader, 1, frame.MessageSize);
-            }
-            else
-            {
-                frameHeader = new byte[2];
-                frameHeader[0] = 0;
-                frameHeader[1] = (byte)frame.MessageSize;
-            }
-
-            m_bufferList.Add(new ArraySegment<byte>(frameHeader));
-            m_bufferList.Add(frame.Buffer);
-
-            bool completedSync = m_usocket.Send(m_bufferList);
-
-            if (completedSync)
-            {
-                Complete();
-            }
-            else
-            {
-                m_state = State.Sending;    
-            }            
         }
 
         private void PutLong(byte[] buffer, int offset, long value)
@@ -123,20 +118,6 @@ namespace NetMessage.NetMQ.Tcp
             buffer[offset + 5] = (byte)(((value) >> 16) & 0xff);
             buffer[offset + 6] = (byte)(((value) >> 8) & 0xff);
             buffer[offset + 7] = (byte)(value & 0xff);
-        }
-
-        private void Complete()
-        {
-            m_state = State.Done;
-            m_message = null;
-
-            if (m_signalPipe)
-            {
-                m_pipeBase.OnSent();
-            }
-
-            Raise(m_doneEvent, MessageSentEvent);
-            StopStateMachine();            
         }
 
         protected override void Shutdown(int sourceId, int type, Core.AsyncIO.StateMachine source)
@@ -158,8 +139,125 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case StartAction:                                    
-                                    Send();
+                                case StartAction:
+                                    m_state = State.NoMessages;
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+
+                case State.NoMessages:
+                    switch (sourceId)
+                    {
+                        case ActionSourceId:
+                            switch (type)
+                            {
+                                case SendMessageAction:
+                                    if (m_totalPendingSize > MinimumMessageSize || NoDelay)
+                                    {
+                                        bool completedSync = m_usocket.Send(m_bufferList);
+
+                                        if (completedSync)
+                                        {
+                                            m_totalPendingSize = 0;
+                                            m_bufferList.Clear();
+
+                                            if (SignalPipe)
+                                            {
+                                                m_pipeBase.OnSent();
+                                            }
+
+                                            Raise(m_doneEvent, MessageSentEvent);
+
+                                            // No state change
+                                        }
+                                        else
+                                        {
+                                            m_state = State.Sending;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (SignalPipe)
+                                        {
+                                            m_pipeBase.OnSent();
+                                        }
+
+                                        Raise(m_doneEvent, MessageSentEvent);
+
+                                        m_timer.Start(SmallMessagesTimerInterval);
+
+                                        m_state = State.WaitingForMoreMessages;
+                                    }
+
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+                case State.WaitingForMoreMessages:
+                    switch (sourceId)
+                    {
+                        case ActionSourceId:
+                            switch (type)
+                            {
+                                case SendMessageAction:
+                                    if (m_totalPendingSize > MinimumMessageSize || NoDelay)
+                                    {
+                                        m_timer.Stop();
+                                        m_state = State.StoppingTimer;
+                                    }
+                                    else
+                                    {
+                                        if (SignalPipe)
+                                        {
+                                            m_pipeBase.OnSent();
+                                        }
+
+                                        Raise(m_doneEvent, MessageSentEvent);
+                                    }
+                                    break;
+                            }
+                            break;
+                        case TimerSourceId:
+                            switch (type)
+                            {
+                                case Timer.TimeOutEvent:
+                                    m_timer.Stop();
+                                    m_state = State.StoppingTimer;
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+                case State.StoppingTimer:
+                    switch (sourceId)
+                    {
+                        case TimerSourceId:
+                            switch (type)
+                            {
+                                case Timer.StoppedEvent:
+
+                                    bool completedSync = m_usocket.Send(m_bufferList);
+                                    if (completedSync)
+                                    {
+                                        m_totalPendingSize = 0;
+                                        m_bufferList.Clear();
+
+                                        if (SignalPipe)
+                                        {
+                                            m_pipeBase.OnSent();
+                                        }
+
+                                        Raise(m_doneEvent, MessageSentEvent);
+
+                                        m_state = State.NoMessages;
+                                    }
+                                    else
+                                    {
+                                        m_state = State.Sending;
+                                    }
                                     break;
                             }
                             break;
@@ -172,7 +270,17 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case MessageSentEvent:
-                                    Complete();
+                                    m_totalPendingSize = 0;
+                                    m_bufferList.Clear();
+
+                                    if (SignalPipe)
+                                    {
+                                        m_pipeBase.OnSent();
+                                    }
+
+                                    Raise(m_doneEvent, MessageSentEvent);
+
+                                    m_state = State.NoMessages;
                                     break;
                             }
                             break;
