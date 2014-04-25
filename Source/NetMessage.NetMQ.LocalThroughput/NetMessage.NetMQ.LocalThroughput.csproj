@@ -8,7 +8,7 @@
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>NetMessage.NetMQ.LocalThroughput</RootNamespace>
-    <AssemblyName>NetMessage.NetMQ.LocalThroughput</AssemblyName>
+    <AssemblyName>local_thr</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>

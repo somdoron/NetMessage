@@ -190,27 +190,18 @@ namespace NetMessage.Core.AsyncIO
             Action(BeingAcceptedAction);
 
             listener.m_in.SocketAsyncEventArgs.AcceptSocket = m_socket;
-
-            listener.m_in.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
-
-            listener.m_in.Start(false);
-
+            
             bool isPending = listener.m_socket.AcceptAsync(listener.m_in.SocketAsyncEventArgs);
 
             if (isPending)
             {
-                listener.m_in.Waiting();
+                m_acceptSocket = listener;
+                listener.m_acceptSocket = this;
 
-                if (!listener.m_in.IsIdle)
-                {
-                    m_acceptSocket = listener;
-                    listener.m_acceptSocket = this;
-                }
+                listener.m_in.Start(false);
             }
             else
-            {
-                listener.m_in.Stop();
-
+            {                
                 if (listener.m_in.SocketAsyncEventArgs.SocketError == SocketError.Success)
                 {
                     listener.Action(DoneAction);
@@ -253,20 +244,16 @@ namespace NetMessage.Core.AsyncIO
                 m_out.SocketAsyncEventArgs.SetBuffer(null,0,0);
             }
 
-            m_out.SocketAsyncEventArgs.RemoteEndPoint = endpoint;
-            m_out.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
-
-            m_out.Start(false);
+            m_out.SocketAsyncEventArgs.RemoteEndPoint = endpoint;            
+            
             bool isPending = m_socket.ConnectAsync(m_out.SocketAsyncEventArgs);
 
             if (isPending)
             {
-                m_out.Waiting();
+                m_out.Start(false);
             }
             else
-            {
-                m_out.Stop();
-
+            {                
                 if (m_out.SocketAsyncEventArgs.SocketError == SocketError.Success)
                 {
                     Action(DoneAction);
@@ -278,8 +265,14 @@ namespace NetMessage.Core.AsyncIO
             }
         }
 
-        public bool Send(byte[] buffer, int offset, int count)
+        int counter = 0;
+        private int averagePacket = 0;
+
+        public void Send(byte[] buffer, int offset, int count)
         {
+            counter++;
+            averagePacket += count;                           
+
             if (m_out.SocketAsyncEventArgs.Buffer != buffer)
             {
                 m_out.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);
@@ -288,30 +281,15 @@ namespace NetMessage.Core.AsyncIO
             {
                 m_out.SocketAsyncEventArgs.SetBuffer(offset, count);
             }
-
-            m_out.Start(false);
+            
             bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);
 
             if (isPending)
             {
-                m_out.Waiting(false);
-
-                if (m_out.IsIdle)
-                {                    
-                    if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
-                    {
-                        Action(ErrorAction);
-                    }
-                    else
-                    {
-                        return true;    
-                    }                    
-                }
+                m_out.Start(false);                                
             }
             else
-            {                
-                m_out.Stop();
-
+            {                                
                 if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
                 {
                     Action(ErrorAction);
@@ -320,9 +298,7 @@ namespace NetMessage.Core.AsyncIO
                 {
                     Feed(OutSourceId, DoneAction, null);
                 }
-            }
-
-            return false;
+            }            
         }
 
         //public bool Send(IList<ArraySegment<byte>> items)
@@ -361,26 +337,23 @@ namespace NetMessage.Core.AsyncIO
         {
             Debug.Assert(m_state == State.Active);
 
-            m_in.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);
-
-            m_in.Start(true);
+            m_in.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);            
 
             bool isPending = m_socket.ReceiveAsync(m_in.SocketAsyncEventArgs);
 
             if (isPending)
             {
-                m_in.Waiting();
+                m_in.Start(true);
             }
             else
-            {
-                m_out.Stop();
-
-                if (m_in.SocketAsyncEventArgs.SocketError != SocketError.Success)
+            {                
+                if (m_in.SocketAsyncEventArgs.SocketError != SocketError.Success || m_in.SocketAsyncEventArgs.BytesTransferred == 0)
                 {
                     Action(ErrorAction);
                 }
                 else
                 {
+                    Debug.Assert(false);
                     Feed(InSourceId, DoneAction, null);
                 }
             }

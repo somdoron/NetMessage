@@ -155,19 +155,9 @@ namespace NetMessage.NetMQ.Tcp
                                 case StartAction:
                                     // TODO: this should be an option 
                                     m_timer.Start(20000);
-                                    bool completedSync = m_usocket.Send(m_outGreeting, 0, m_outGreeting.Length);
+                                    m_usocket.Send(m_outGreeting, 0, m_outGreeting.Length);
+                                    m_state = State.Sending;
 
-                                    if (completedSync)
-                                    {
-                                        m_inGreetingReceived = 0;
-                                        m_usocket.Receive(m_inGreeting, 0, GreetingSize);
-                                        m_state = State.Receiving;
-                                    }
-                                    else
-                                    {
-                                        m_state = State.Sending;    
-                                    }
-                                    
                                     break;
                             }
                             break;
@@ -246,25 +236,12 @@ namespace NetMessage.NetMQ.Tcp
                                             m_state = State.StoppingTimerError;
                                             break;
                                         }
-                                        
+
                                         // sending the identity message, currently always sending empty message
                                         byte[] identity = new byte[2];
 
-                                        if (m_usocket.Send(identity, 0, 2))
-                                        {
-                                            m_state = State.SendingIdentity;    
-                                        }
-                                        else
-                                        {
-                                            m_encoder = new EncoderV2(EncoderSourceId, this, m_pipeBase);
-                                            Encoder.Start(m_usocket);
-
-                                            m_decoder = new DecoderV2(DecoderSourceId, this);
-                                            m_receivedIdentity = new NetMQMessage();
-                                            Decoder.Start(m_usocket, m_receivedIdentity);
-                                            m_state = State.ReceivingIdentity;  
-                                        }
-                                        
+                                        m_usocket.Send(identity, 0, 2);
+                                        m_state = State.SendingIdentity;
                                     }
                                     break;
                                 case USocket.ShutdownEvent:
@@ -295,32 +272,32 @@ namespace NetMessage.NetMQ.Tcp
                                 case USocket.SentEvent:
                                     // creating the encoder
                                     m_encoder = new EncoderV2(EncoderSourceId, this, m_pipeBase);
-                                    Encoder.Start(m_usocket); 
-                                    
+                                    Encoder.Start(m_usocket);
+
                                     m_decoder = new DecoderV2(DecoderSourceId, this);
                                     m_receivedIdentity = new NetMQMessage();
                                     Decoder.Start(m_usocket, m_receivedIdentity);
-                                    m_state = State.ReceivingIdentity;  
+                                    m_state = State.ReceivingIdentity;
                                     break;
                                 case USocket.ShutdownEvent:
                                     break;
-                                case USocket.ErrorEvent:                                    
-                                    m_timer.Stop();                                    
+                                case USocket.ErrorEvent:
+                                    m_timer.Stop();
                                     m_state = State.StoppingTimerError;
                                     break;
                             }
-                            break;                        
+                            break;
                         case TimerSourceId:
                             switch (type)
                             {
                                 case Timer.TimeOutEvent:
-                                    m_timer.Stop();                                    
+                                    m_timer.Stop();
                                     m_state = State.StoppingTimerError;
                                     break;
                             }
                             break;
                     }
-                    break;                
+                    break;
 
                 case State.ReceivingIdentity:
                     switch (sourceId)
@@ -424,7 +401,7 @@ namespace NetMessage.NetMQ.Tcp
                                     }
                                     break;
                             }
-                            break;                       
+                            break;
                     }
                     break;
                 case State.StoppingTimerDone:

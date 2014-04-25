@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ.LocalThrou
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ.RemoteThroughput", "NetMessage.NetMQ.RemoteThroughput\NetMessage.NetMQ.RemoteThroughput.csproj", "{86831107-6932-4059-8DE1-2CE290EE8161}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ.LocalLatency", "NetMessage.NetMQ.LocalLatency\NetMessage.NetMQ.LocalLatency.csproj", "{BF164BCA-82C4-4E25-8D00-B3E2BA8B7025}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ.RemoteLatency", "NetMessage.NetMQ.RemoteLatency\NetMessage.NetMQ.RemoteLatency.csproj", "{3CCCAB06-0644-4980-91F2-C51967EEBA0F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +47,14 @@ Global
 		{86831107-6932-4059-8DE1-2CE290EE8161}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{86831107-6932-4059-8DE1-2CE290EE8161}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{86831107-6932-4059-8DE1-2CE290EE8161}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF164BCA-82C4-4E25-8D00-B3E2BA8B7025}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF164BCA-82C4-4E25-8D00-B3E2BA8B7025}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF164BCA-82C4-4E25-8D00-B3E2BA8B7025}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF164BCA-82C4-4E25-8D00-B3E2BA8B7025}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3CCCAB06-0644-4980-91F2-C51967EEBA0F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3CCCAB06-0644-4980-91F2-C51967EEBA0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3CCCAB06-0644-4980-91F2-C51967EEBA0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3CCCAB06-0644-4980-91F2-C51967EEBA0F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

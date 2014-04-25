@@ -25,9 +25,7 @@ namespace NetMessage.NetMQ.Tcp
             Done,
         }
 
-        public const int ReceiveBufferSize = 1024 * 8;
-
-        public const int MinimumBytesToRead = 1024*2;
+        public const int ReceiveBufferSize = 1024 * 8;        
 
         private const int NextAction = 2;
 
@@ -47,7 +45,7 @@ namespace NetMessage.NetMQ.Tcp
         public DecoderV2(int sourceId, StateMachine owner)
             : base(sourceId, owner)
         {
-            m_receiveBuffer = new byte[ReceiveBufferSize];
+            m_receiveBuffer = new byte[ReceiveBufferSize * 2];
             m_state = State.Idle;
             m_doneEvent = new StateMachineEvent();
             m_bytesReceived = 0;
@@ -135,7 +133,7 @@ namespace NetMessage.NetMQ.Tcp
             // check if we have 8 bytes to read
             if (m_bytesReceived - m_position < 8)
             {
-                ReceiveMore(8 - (m_bytesReceived - m_position));
+                ReceiveMore();
             }
             else
             {
@@ -163,7 +161,7 @@ namespace NetMessage.NetMQ.Tcp
 
                 if (bytesLeft < m_size)
                 {                    
-                    ReceiveMore(m_size - bytesLeft);
+                    ReceiveMore();
                 }
                 else
                 {
@@ -195,16 +193,9 @@ namespace NetMessage.NetMQ.Tcp
             }
         }
         
-        private void ReceiveMore(int bytesNeed = 1)
+        private void ReceiveMore()
         {
-            int minimumToReceive = bytesNeed;
-
-            if (minimumToReceive < MinimumBytesToRead)
-            {
-                minimumToReceive = MinimumBytesToRead;
-            }
-
-            if (m_bytesReceived + minimumToReceive > ReceiveBufferSize)
+            if (m_bytesReceived + ReceiveBufferSize > m_receiveBuffer.Length)
             {
                 m_bytesReceived = m_bytesReceived - m_position;
 
@@ -214,7 +205,7 @@ namespace NetMessage.NetMQ.Tcp
                 m_position = 0;
             }
 
-            m_usocket.Receive(m_receiveBuffer, m_bytesReceived, ReceiveBufferSize - m_bytesReceived);
+            m_usocket.Receive(m_receiveBuffer, m_bytesReceived, ReceiveBufferSize);
         }
 
         protected override void Handle(int sourceId, int type, StateMachine source)

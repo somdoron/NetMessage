@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace NetMessage.Core.AsyncIO
@@ -13,25 +12,25 @@ namespace NetMessage.Core.AsyncIO
     {
         public const int DoneEvent = 1;
         public const int ErrorEvent = 2;
-        
+
 
         enum State
         {
-            Idle = 1, Pending, Waiting
+            Idle = 1, Active, ActiveZeroIsError
         }
 
-        private int m_state;
-        private bool m_zeroIsError;        
-        
-        public AsyncOperation(int sourceId, StateMachine owner)  : base(sourceId, owner)
+        private State m_state;
+
+        public AsyncOperation(int sourceId, StateMachine owner)
+            : base(sourceId, owner)
         {
             SourceId = sourceId;
             Owner = owner;
-            m_state = (int)State.Idle;
+            m_state = State.Idle;
 
             SocketAsyncEventArgs = new SocketAsyncEventArgs();
             SocketAsyncEventArgs.Completed += OnCompleted;
-        }       
+        }
 
         public int SourceId { get; private set; }
 
@@ -41,8 +40,8 @@ namespace NetMessage.Core.AsyncIO
 
         public bool IsIdle
         {
-            get { return m_state == (int)State.Idle; }
-        }       
+            get { return m_state == State.Idle; }
+        }
 
         public override void Dispose()
         {
@@ -52,61 +51,26 @@ namespace NetMessage.Core.AsyncIO
 
         public void Start(bool zeroIsError)
         {
-            Interlocked.Exchange(ref m_state, (int) State.Pending);
-            m_zeroIsError = false;
-
-        }
-
-        public void Stop()
-        {
-            Interlocked.Exchange(ref m_state, (int)State.Idle);
-        }
-
-        public void Waiting(bool feed=true)
-        {
-            State state = (State)Interlocked.CompareExchange(ref m_state, (int)State.Waiting, (int)State.Pending);
-
-            if (feed)
-            {
-                if (state == State.Idle)
-                {
-                    int action = DoneEvent;
-
-                    if (SocketAsyncEventArgs.SocketError != SocketError.Success ||
-                        (m_zeroIsError && SocketAsyncEventArgs.BytesTransferred == 0))
-                    {
-                        action = ErrorEvent;
-                    }
-
-                    Owner.Feed(SourceId, action, this);
-                }
-            }            
+            m_state = zeroIsError ? State.ActiveZeroIsError : State.Active;
         }
 
         private void OnCompleted(object sender, SocketAsyncEventArgs e)
         {
-            // if the operation completed synced
-            if (Interlocked.CompareExchange(ref m_state, (int)State.Idle, (int)State.Pending) == (int)State.Pending)
-            {               
-                // async operation canceled 
-                return;
-            }
-
-            Owner.Context.Enter();            
+            Owner.Context.Enter();
 
             try
-            {               
-                Debug.Assert(m_state != (int)State.Idle);
-            
+            {
+                Debug.Assert(m_state != State.Idle);
+
                 int action = DoneEvent;
 
                 if (e.SocketError != SocketError.Success ||
-                    (m_zeroIsError && e.BytesTransferred == 0))
+                    (m_state == State.ActiveZeroIsError && e.BytesTransferred == 0))
                 {
                     action = ErrorEvent;
                 }
 
-                Interlocked.Exchange(ref m_state, (int) State.Idle);                
+                m_state = State.Idle;
 
                 Owner.Feed(SourceId, action, this);
             }
@@ -117,11 +81,11 @@ namespace NetMessage.Core.AsyncIO
         }
 
         protected override void Handle(int sourceId, int type, StateMachine source)
-        {            
+        {
         }
 
         protected override void Shutdown(int sourceId, int type, StateMachine source)
-        {            
-        }        
+        {
+        }
     }
 }

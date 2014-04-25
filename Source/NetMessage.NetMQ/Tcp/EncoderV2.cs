@@ -15,7 +15,7 @@ namespace NetMessage.NetMQ.Tcp
 {
     public class EncoderV2 : EncoderBase
     {
-        public int SocketSendBufferSize = 1024 * 8;
+        public int SocketSendBufferSize = 1024 * 2;
 
         enum State
         {
@@ -101,7 +101,7 @@ namespace NetMessage.NetMQ.Tcp
                 int largeMessage = frame.MessageSize > 255 ? 2 : 0;
                 int isLast = i == message.FrameCount - 1 ? 0 : 1;
 
-                int size = frame.MessageSize + largeMessage == 2 ? 9 : 2;
+                int size = frame.MessageSize + (largeMessage == 2 ? 9 : 2);
                 if ((position - m_bufferStartIndex) + size > m_sendBufferSize || size + position > m_sendBuffer.Length)
                 {
                     // not enough space in buffer to send messages
@@ -151,7 +151,7 @@ namespace NetMessage.NetMQ.Tcp
         }
 
         protected override void Handle(int sourceId, int type, StateMachine source)
-        {          
+        {
             switch (m_state)
             {
                 case State.Idle:
@@ -189,21 +189,12 @@ namespace NetMessage.NetMQ.Tcp
 
                                     m_message = null;
 
-                                    bool completedSync = m_usocket.Send(m_sendBuffer, 0, m_position);
+                                    m_usocket.Send(m_sendBuffer, 0, m_position);
                                     m_bufferStartIndex = m_position;
 
-                                    if (completedSync)
-                                    {
-                                        m_position = 0;
-                                        m_bufferStartIndex = 0;                                        
-                                    }
-                                    else
-                                    {
-                                        m_state = State.Sending;
-                                    }
+                                    m_state = State.Sending;
 
                                     // because the buffer is not full we let the session and pipe now the message was sent
-
                                     m_pipeBase.OnSent();
                                     Raise(m_doneEvent, MessageSentEvent);
 
@@ -235,22 +226,8 @@ namespace NetMessage.NetMQ.Tcp
                                     // if we have data waiting
                                     if (m_position != m_bufferStartIndex)
                                     {
-                                        bool completedSync = m_usocket.Send(m_sendBuffer, m_bufferStartIndex, m_position - m_bufferStartIndex);
-                                        m_bufferStartIndex = m_position;
-
-                                        if (completedSync)
-                                        {
-                                            m_position = 0;
-                                            m_bufferStartIndex = 0;
-
-                                            m_state = State.NoMessages;
-
-                                            // if message is waiting let's send it
-                                            if (m_message != null)
-                                            {
-                                                Action(SendMessageAction);
-                                            }
-                                        }
+                                        m_usocket.Send(m_sendBuffer, m_bufferStartIndex, m_position - m_bufferStartIndex);
+                                        m_bufferStartIndex = m_position;                                        
                                     }
                                     else if (m_message != null)
                                     {
