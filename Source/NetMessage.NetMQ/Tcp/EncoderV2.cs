@@ -12,7 +12,7 @@ using NetMessage.Core.Transport;
 namespace NetMessage.NetMQ.Tcp
 {
     public class EncoderV2 : EncoderBase
-    {
+    {        
         enum State
         {
             Idle = 1, NoMessages, WaitingForMoreMessages, StoppingTimer, Sending
@@ -20,8 +20,10 @@ namespace NetMessage.NetMQ.Tcp
 
         private const int TimerSourceId = 1;
 
-        private const int MinimumMessageSize = 1000;
-        private const int SmallMessagesTimerInterval = 10;
+        private int SendBufferSize = 1024*8;
+
+        private const int MinimumMessageSize = 1024 * 2;
+        private const int SmallMessagesTimerInterval = 50;
 
         private const int SendMessageAction = 2;
 
@@ -30,11 +32,12 @@ namespace NetMessage.NetMQ.Tcp
 
         private readonly PipeBase<NetMQMessage> m_pipeBase;
         private USocket m_usocket;
-        
-        private List<ArraySegment<byte>> m_bufferList;        
-        private int m_totalPendingSize = 0;
-
+                
         private Timer m_timer;
+
+        private NetMQMessage m_message;        
+        private byte[] m_sendBuffer;
+        private int m_position;
 
         public EncoderV2(int sourceId, StateMachine owner, PipeBase<NetMQMessage> pipeBase)
             : base(sourceId, owner)
@@ -42,7 +45,7 @@ namespace NetMessage.NetMQ.Tcp
             m_pipeBase = pipeBase;
             m_state = State.Idle;
             m_doneEvent = new StateMachineEvent();
-            m_bufferList = new List<ArraySegment<byte>>();
+            m_sendBuffer = new byte[SendBufferSize];
             m_timer = new Timer(TimerSourceId, this);
         }
 
@@ -71,41 +74,50 @@ namespace NetMessage.NetMQ.Tcp
 
         public override void Send(NetMQMessage message)
         {            
-            AddMessage(message);
+            //AddMessage(message);
+            m_message = message;
 
             Action(SendMessageAction);
         }
 
-        private void AddMessage(NetMQMessage message)
+        private bool AddMessage(NetMQMessage message)
         {
-            byte[] frameHeader;
+            int position = m_position;
             NetMQFrame frame;
 
             for (int i = 0; i < message.FrameCount; i++)
             {
-                frame = message[i];
+                frame = message[i];                
 
+                int largeMessage = frame.MessageSize > 255 ? 2 : 0;
                 int isLast = i == message.FrameCount - 1 ? 0 : 1;
 
-                if (frame.MessageSize > 255)
+                int size = frame.MessageSize + largeMessage == 2 ? 9 : 2;
+                if (size > SendBufferSize - position)
                 {
-                    frameHeader = new byte[9];
-                    frameHeader[0] = (byte)(2 | isLast);
+                    // not enough space in buffer to send messages
+                    return false;
+                }
 
-                    PutLong(frameHeader, 1, frame.MessageSize);
+                m_sendBuffer[position] = (byte)(largeMessage | isLast);                                       
+
+                if (largeMessage == 2)
+                {                    
+                    PutLong(m_sendBuffer, position+1, frame.MessageSize);
+                    position += 9;
                 }
                 else
-                {
-                    frameHeader = new byte[2];
-                    frameHeader[0] = (byte)isLast;
-                    frameHeader[1] = (byte)frame.MessageSize;
+                {                    
+                    m_sendBuffer[position+1] = (byte)frame.MessageSize;
+                    position += 2;
                 }
 
-                m_bufferList.Add(new ArraySegment<byte>(frameHeader));
-                m_bufferList.Add(frame.Buffer);
-
-                m_totalPendingSize += frame.MessageSize;
+                Buffer.BlockCopy(frame.Buffer.Array, frame.Buffer.Offset, m_sendBuffer, position, frame.MessageSize);
+                position += frame.MessageSize;
             }
+
+            m_position = position;
+            return true;
         }
 
         private void PutLong(byte[] buffer, int offset, long value)
@@ -154,14 +166,20 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case SendMessageAction:
-                                    if (m_totalPendingSize > MinimumMessageSize || NoDelay)
+                                    if (!AddMessage(m_message))
                                     {
-                                        bool completedSync = m_usocket.Send(m_bufferList);
+                                        // TODO: handle very big message
+                                    }
+
+                                    m_message = null;
+
+                                    if (m_position > MinimumMessageSize || NoDelay)
+                                    {                                                                                
+                                        bool completedSync = m_usocket.Send(m_sendBuffer, 0, m_position);
 
                                         if (completedSync)
                                         {
-                                            m_totalPendingSize = 0;
-                                            m_bufferList.Clear();
+                                            m_position = 0;                                            
 
                                             if (SignalPipe)
                                             {
@@ -203,19 +221,30 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case SendMessageAction:
-                                    if (m_totalPendingSize > MinimumMessageSize || NoDelay)
+                                    if (!AddMessage(m_message))
                                     {
+                                        // send the current buffer, we will send the next message later
                                         m_timer.Stop();
                                         m_state = State.StoppingTimer;
                                     }
                                     else
                                     {
-                                        if (SignalPipe)
-                                        {
-                                            m_pipeBase.OnSent();
-                                        }
+                                        m_message = null;
 
-                                        Raise(m_doneEvent, MessageSentEvent);
+                                        if (m_position > MinimumMessageSize || NoDelay)
+                                        {
+                                            m_timer.Stop();
+                                            m_state = State.StoppingTimer;
+                                        }
+                                        else
+                                        {
+                                            if (SignalPipe)
+                                            {
+                                                m_pipeBase.OnSent();
+                                            }
+
+                                            Raise(m_doneEvent, MessageSentEvent);
+                                        }
                                     }
                                     break;
                             }
@@ -239,11 +268,10 @@ namespace NetMessage.NetMQ.Tcp
                             {
                                 case Timer.StoppedEvent:
 
-                                    bool completedSync = m_usocket.Send(m_bufferList);
+                                    bool completedSync = m_usocket.Send(m_sendBuffer, 0, m_position);
                                     if (completedSync)
                                     {
-                                        m_totalPendingSize = 0;
-                                        m_bufferList.Clear();
+                                        m_position = 0;                                        
 
                                         if (SignalPipe)
                                         {
@@ -253,6 +281,12 @@ namespace NetMessage.NetMQ.Tcp
                                         Raise(m_doneEvent, MessageSentEvent);
 
                                         m_state = State.NoMessages;
+
+                                        // message is waiting to be sent
+                                        if (m_message != null)
+                                        {
+                                            Action(SendMessageAction);
+                                        }
                                     }
                                     else
                                     {
@@ -270,8 +304,7 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case MessageSentEvent:
-                                    m_totalPendingSize = 0;
-                                    m_bufferList.Clear();
+                                    m_position = 0;
 
                                     if (SignalPipe)
                                     {
@@ -281,6 +314,13 @@ namespace NetMessage.NetMQ.Tcp
                                     Raise(m_doneEvent, MessageSentEvent);
 
                                     m_state = State.NoMessages;
+
+                                    // message is waiting to be sent
+                                    if (m_message != null)
+                                    {
+                                        Action(SendMessageAction);
+                                    }
+
                                     break;
                             }
                             break;

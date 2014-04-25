@@ -248,6 +248,10 @@ namespace NetMessage.Core.AsyncIO
             {
                 m_out.SocketAsyncEventArgs.BufferList = null;
             }
+            else if (m_out.SocketAsyncEventArgs.Buffer != null)
+            {
+                m_out.SocketAsyncEventArgs.SetBuffer(null,0,0);
+            }
 
             m_out.SocketAsyncEventArgs.RemoteEndPoint = endpoint;
             m_out.SocketAsyncEventArgs.SocketError = SocketError.IOPending;
@@ -276,10 +280,39 @@ namespace NetMessage.Core.AsyncIO
 
         public bool Send(byte[] buffer, int offset, int count)
         {
-            return Send(new List<ArraySegment<byte>>
+            if (m_out.SocketAsyncEventArgs.Buffer != buffer)
             {
-                new ArraySegment<byte>(buffer, offset,count)
-            });
+                m_out.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);
+            }
+            else
+            {
+                m_out.SocketAsyncEventArgs.SetBuffer(offset, count);
+            }
+
+            m_out.Start(false);
+            bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);
+
+            if (isPending)
+            {
+                m_out.Waiting(false);
+
+                return m_out.IsIdle;
+            }
+            else
+            {
+                m_out.Stop();
+
+                if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
+                {
+                    Action(ErrorAction);
+                }
+                else
+                {
+                    Feed(OutSourceId, DoneAction, null);
+                }
+            }
+
+            return false;
         }
 
         public bool Send(IList<ArraySegment<byte>> items)
