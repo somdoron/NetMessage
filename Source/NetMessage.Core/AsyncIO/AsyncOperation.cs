@@ -87,7 +87,7 @@ namespace NetMessage.Core.AsyncIO
         {
             // if the operation completed synced
             if (Interlocked.CompareExchange(ref m_state, (int)State.Idle, (int)State.Pending) == (int)State.Pending)
-            {
+            {               
                 // async operation canceled 
                 return;
             }
@@ -97,7 +97,7 @@ namespace NetMessage.Core.AsyncIO
             try
             {               
                 Debug.Assert(m_state != (int)State.Idle);
-
+            
                 int action = DoneEvent;
 
                 if (e.SocketError != SocketError.Success ||

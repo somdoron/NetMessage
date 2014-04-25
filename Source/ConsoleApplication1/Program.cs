@@ -44,10 +44,7 @@ namespace ConsoleApplication1
 
             Stopwatch stopwatch = new Stopwatch();
             ManualResetEvent manualResetEvent = new ManualResetEvent(false);
-
-            List<ArraySegment<byte>> bufferList= new List<ArraySegment<byte>>();
-            bufferList.Add(new ArraySegment<byte>(data));
-
+            
             SocketAsyncEventArgs socketAsyncEventArgs = new SocketAsyncEventArgs();            
             socketAsyncEventArgs.Completed += delegate(object sender, SocketAsyncEventArgs eventArgs)
             {
@@ -59,18 +56,16 @@ namespace ConsoleApplication1
                     manualResetEvent.Set();
                 }
 
-                socketAsyncEventArgs.BufferList = bufferList;
+                socketAsyncEventArgs.SetBuffer(data, 0, data.Length);
                 client.SendAsync(socketAsyncEventArgs);
             };
 
-
             stopwatch.Start();
 
-            socketAsyncEventArgs.BufferList = bufferList;
+            socketAsyncEventArgs.SetBuffer(data, 0, data.Length);
             client.SendAsync(socketAsyncEventArgs);
 
             manualResetEvent.WaitOne();
-
 
             Console.WriteLine("{0:N0} per second", (double)count / stopwatch.ElapsedMilliseconds * 1000);
             Console.ReadLine();

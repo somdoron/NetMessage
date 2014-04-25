@@ -246,21 +246,25 @@ namespace NetMessage.NetMQ.Tcp
                                             m_state = State.StoppingTimerError;
                                             break;
                                         }
-
-                                        // creating the encoder
-                                        m_encoder = new EncoderV2(EncoderSourceId, this, m_pipeBase);
-
+                                        
                                         // sending the identity message, currently always sending empty message
-                                        NetMQMessage identityMessage = new NetMQMessage();
-                                        identityMessage.AppendEmptyFrame();
+                                        byte[] identity = new byte[2];
 
-                                        Encoder.Start(m_usocket);
+                                        if (m_usocket.Send(identity, 0, 2))
+                                        {
+                                            m_state = State.SendingIdentity;    
+                                        }
+                                        else
+                                        {
+                                            m_encoder = new EncoderV2(EncoderSourceId, this, m_pipeBase);
+                                            Encoder.Start(m_usocket);
 
-                                        Encoder.SignalPipe = false;
-                                        Encoder.NoDelay = true;
-
-                                        Encoder.Send(identityMessage);
-                                        m_state = State.SendingIdentity;
+                                            m_decoder = new DecoderV2(DecoderSourceId, this);
+                                            m_receivedIdentity = new NetMQMessage();
+                                            Decoder.Start(m_usocket, m_receivedIdentity);
+                                            m_state = State.ReceivingIdentity;  
+                                        }
+                                        
                                     }
                                     break;
                                 case USocket.ShutdownEvent:
@@ -289,7 +293,14 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case USocket.SentEvent:
-                                    Encoder.Sent();
+                                    // creating the encoder
+                                    m_encoder = new EncoderV2(EncoderSourceId, this, m_pipeBase);
+                                    Encoder.Start(m_usocket); 
+                                    
+                                    m_decoder = new DecoderV2(DecoderSourceId, this);
+                                    m_receivedIdentity = new NetMQMessage();
+                                    Decoder.Start(m_usocket, m_receivedIdentity);
+                                    m_state = State.ReceivingIdentity;  
                                     break;
                                 case USocket.ShutdownEvent:
                                     break;
@@ -298,23 +309,7 @@ namespace NetMessage.NetMQ.Tcp
                                     m_state = State.StoppingTimerError;
                                     break;
                             }
-                            break;
-                        case EncoderSourceId:
-                            switch (type)
-                            {
-                                case EncoderBase.MessageSentEvent:
-                                    m_decoder = new DecoderV2(DecoderSourceId, this);
-                                    m_receivedIdentity = new NetMQMessage();
-                                    Decoder.Start(m_usocket, m_receivedIdentity);
-                                    m_state = State.ReceivingIdentity;
-                                    break;
-                                case EncoderBase.ErrorEvent:
-                                    m_timer.Stop();                                    
-                                    m_state = State.StoppingTimerError;
-                                    break;
-                                    break;
-                            }
-                            break;
+                            break;                        
                         case TimerSourceId:
                             switch (type)
                             {

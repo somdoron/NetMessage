@@ -3,27 +3,29 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
+using NetMessage.Core;
 using NetMessage.Core.AsyncIO;
 using NetMessage.Core.Transport;
 
 namespace NetMessage.NetMQ.Tcp
 {
     public class EncoderV2 : EncoderBase
-    {        
+    {
+        public int SocketSendBufferSize = 1024 * 8;
+
         enum State
         {
-            Idle = 1, NoMessages, WaitingForMoreMessages, StoppingTimer, Sending
+            Idle = 1, NoMessages, Sending, Errored
         }
 
         private const int TimerSourceId = 1;
 
-        private int SendBufferSize = 1024*8;
-
-        private const int MinimumMessageSize = 1024 * 2;
-        private const int SmallMessagesTimerInterval = 50;
+        private const int MaximumPacketSize = 1460;
+        private const int SmallMessagesTimerInterval = 10;
 
         private const int SendMessageAction = 2;
 
@@ -32,12 +34,15 @@ namespace NetMessage.NetMQ.Tcp
 
         private readonly PipeBase<NetMQMessage> m_pipeBase;
         private USocket m_usocket;
-                
+
         private Timer m_timer;
 
-        private NetMQMessage m_message;        
         private byte[] m_sendBuffer;
         private int m_position;
+        private int m_bufferStartIndex;
+        private int m_sendBufferSize;
+
+        private NetMQMessage m_message;
 
         public EncoderV2(int sourceId, StateMachine owner, PipeBase<NetMQMessage> pipeBase)
             : base(sourceId, owner)
@@ -45,8 +50,14 @@ namespace NetMessage.NetMQ.Tcp
             m_pipeBase = pipeBase;
             m_state = State.Idle;
             m_doneEvent = new StateMachineEvent();
-            m_sendBuffer = new byte[SendBufferSize];
+
+            m_sendBufferSize = (int)pipeBase.GetOption(SocketOption.SendBuffer) - SocketSendBufferSize;
+
+            m_sendBuffer = new byte[m_sendBufferSize * 2];
             m_timer = new Timer(TimerSourceId, this);
+
+            m_position = 0;
+            m_bufferStartIndex = 0;
         }
 
         //public override bool IsIdle
@@ -63,18 +74,16 @@ namespace NetMessage.NetMQ.Tcp
             set;
         }
 
-        public override bool SignalPipe { get; set; }
-
         public override void Start(USocket usocket)
         {
             m_usocket = usocket;
+            m_usocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, SocketSendBufferSize);
 
             StartStateMachine();
         }
 
         public override void Send(NetMQMessage message)
-        {            
-            //AddMessage(message);
+        {
             m_message = message;
 
             Action(SendMessageAction);
@@ -87,28 +96,28 @@ namespace NetMessage.NetMQ.Tcp
 
             for (int i = 0; i < message.FrameCount; i++)
             {
-                frame = message[i];                
+                frame = message[i];
 
                 int largeMessage = frame.MessageSize > 255 ? 2 : 0;
                 int isLast = i == message.FrameCount - 1 ? 0 : 1;
 
                 int size = frame.MessageSize + largeMessage == 2 ? 9 : 2;
-                if (size > SendBufferSize - position)
+                if ((position - m_bufferStartIndex) + size > m_sendBufferSize || size + position > m_sendBuffer.Length)
                 {
                     // not enough space in buffer to send messages
                     return false;
                 }
 
-                m_sendBuffer[position] = (byte)(largeMessage | isLast);                                       
+                m_sendBuffer[position] = (byte)(largeMessage | isLast);
 
                 if (largeMessage == 2)
-                {                    
-                    PutLong(m_sendBuffer, position+1, frame.MessageSize);
+                {
+                    PutLong(m_sendBuffer, position + 1, frame.MessageSize);
                     position += 9;
                 }
                 else
-                {                    
-                    m_sendBuffer[position+1] = (byte)frame.MessageSize;
+                {
+                    m_sendBuffer[position + 1] = (byte)frame.MessageSize;
                     position += 2;
                 }
 
@@ -142,7 +151,7 @@ namespace NetMessage.NetMQ.Tcp
         }
 
         protected override void Handle(int sourceId, int type, StateMachine source)
-        {
+        {          
             switch (m_state)
             {
                 case State.Idle:
@@ -166,132 +175,38 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case SendMessageAction:
+                                    m_position = 0;
+                                    m_bufferStartIndex = 0;
+
+                                    // we don't support messages that are larger than the buffer
                                     if (!AddMessage(m_message))
                                     {
-                                        // TODO: handle very big message
+                                        Raise(m_doneEvent, ErrorEvent);
+                                        m_state = State.Errored;
+                                        m_message = null;
+                                        return;
                                     }
 
                                     m_message = null;
 
-                                    if (m_position > MinimumMessageSize || NoDelay)
-                                    {                                                                                
-                                        bool completedSync = m_usocket.Send(m_sendBuffer, 0, m_position);
-
-                                        if (completedSync)
-                                        {
-                                            m_position = 0;                                            
-
-                                            if (SignalPipe)
-                                            {
-                                                m_pipeBase.OnSent();
-                                            }
-
-                                            Raise(m_doneEvent, MessageSentEvent);
-
-                                            // No state change
-                                        }
-                                        else
-                                        {
-                                            m_state = State.Sending;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (SignalPipe)
-                                        {
-                                            m_pipeBase.OnSent();
-                                        }
-
-                                        Raise(m_doneEvent, MessageSentEvent);
-
-                                        m_timer.Start(SmallMessagesTimerInterval);
-
-                                        m_state = State.WaitingForMoreMessages;
-                                    }
-
-                                    break;
-                            }
-                            break;
-                    }
-                    break;
-                case State.WaitingForMoreMessages:
-                    switch (sourceId)
-                    {
-                        case ActionSourceId:
-                            switch (type)
-                            {
-                                case SendMessageAction:
-                                    if (!AddMessage(m_message))
-                                    {
-                                        // send the current buffer, we will send the next message later
-                                        m_timer.Stop();
-                                        m_state = State.StoppingTimer;
-                                    }
-                                    else
-                                    {
-                                        m_message = null;
-
-                                        if (m_position > MinimumMessageSize || NoDelay)
-                                        {
-                                            m_timer.Stop();
-                                            m_state = State.StoppingTimer;
-                                        }
-                                        else
-                                        {
-                                            if (SignalPipe)
-                                            {
-                                                m_pipeBase.OnSent();
-                                            }
-
-                                            Raise(m_doneEvent, MessageSentEvent);
-                                        }
-                                    }
-                                    break;
-                            }
-                            break;
-                        case TimerSourceId:
-                            switch (type)
-                            {
-                                case Timer.TimeOutEvent:
-                                    m_timer.Stop();
-                                    m_state = State.StoppingTimer;
-                                    break;
-                            }
-                            break;
-                    }
-                    break;
-                case State.StoppingTimer:
-                    switch (sourceId)
-                    {
-                        case TimerSourceId:
-                            switch (type)
-                            {
-                                case Timer.StoppedEvent:
-
                                     bool completedSync = m_usocket.Send(m_sendBuffer, 0, m_position);
+                                    m_bufferStartIndex = m_position;
+
                                     if (completedSync)
                                     {
-                                        m_position = 0;                                        
-
-                                        if (SignalPipe)
-                                        {
-                                            m_pipeBase.OnSent();
-                                        }
-
-                                        Raise(m_doneEvent, MessageSentEvent);
-
-                                        m_state = State.NoMessages;
-
-                                        // message is waiting to be sent
-                                        if (m_message != null)
-                                        {
-                                            Action(SendMessageAction);
-                                        }
+                                        m_position = 0;
+                                        m_bufferStartIndex = 0;                                        
                                     }
                                     else
                                     {
                                         m_state = State.Sending;
                                     }
+
+                                    // because the buffer is not full we let the session and pipe now the message was sent
+
+                                    m_pipeBase.OnSent();
+                                    Raise(m_doneEvent, MessageSentEvent);
+
                                     break;
                             }
                             break;
@@ -303,24 +218,49 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case MessageSentEvent:
-                                    m_position = 0;
+                                case SendMessageAction:
+                                    // we are currently sending, let's collect the messages
 
-                                    if (SignalPipe)
+                                    // only if buffer is not full continue, if not, we are not signalling the pipe so no new messages will come
+                                    if (AddMessage(m_message))
                                     {
+                                        m_message = null;
                                         m_pipeBase.OnSent();
+
+                                        Raise(m_doneEvent, MessageSentEvent);
                                     }
+                                    break;
+                                case MessageSentEvent:
 
-                                    Raise(m_doneEvent, MessageSentEvent);
-
-                                    m_state = State.NoMessages;
-
-                                    // message is waiting to be sent
-                                    if (m_message != null)
+                                    // if we have data waiting
+                                    if (m_position != m_bufferStartIndex)
                                     {
+                                        bool completedSync = m_usocket.Send(m_sendBuffer, m_bufferStartIndex, m_position - m_bufferStartIndex);
+                                        m_bufferStartIndex = m_position;
+
+                                        if (completedSync)
+                                        {
+                                            m_position = 0;
+                                            m_bufferStartIndex = 0;
+
+                                            m_state = State.NoMessages;
+
+                                            // if message is waiting let's send it
+                                            if (m_message != null)
+                                            {
+                                                Action(SendMessageAction);
+                                            }
+                                        }
+                                    }
+                                    else if (m_message != null)
+                                    {
+                                        m_state = State.NoMessages;
                                         Action(SendMessageAction);
                                     }
-
+                                    else
+                                    {
+                                        m_state = State.NoMessages;
+                                    }
                                     break;
                             }
                             break;

@@ -23,8 +23,6 @@ namespace NetMessage.NetMQ.Tcp
         {
             get; set; }
 
-        public abstract bool SignalPipe { get; set; }
-
         public void Sent()
         {
             Action(BufferSentAction);

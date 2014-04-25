@@ -246,10 +246,7 @@ namespace NetMessage.NetMQ.Tcp
                                     m_encoder = m_handshake.Encoder;
                                     StateMachine encoderOwner = this;
                                     int encoderSourceId = EncoderSourceId;
-                                    m_encoder.SwapOwner(ref encoderOwner, ref encoderSourceId);
-
-                                    m_encoder.NoDelay = false;
-                                    m_encoder.SignalPipe = true;
+                                    m_encoder.SwapOwner(ref encoderOwner, ref encoderSourceId);                                    
 
                                     m_handshake.Stop();
                                     m_state = State.StoppingHandshake;

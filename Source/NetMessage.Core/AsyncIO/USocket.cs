@@ -296,10 +296,20 @@ namespace NetMessage.Core.AsyncIO
             {
                 m_out.Waiting(false);
 
-                return m_out.IsIdle;
+                if (m_out.IsIdle)
+                {                    
+                    if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
+                    {
+                        Action(ErrorAction);
+                    }
+                    else
+                    {
+                        return true;    
+                    }                    
+                }
             }
             else
-            {
+            {                
                 m_out.Stop();
 
                 if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
@@ -315,37 +325,37 @@ namespace NetMessage.Core.AsyncIO
             return false;
         }
 
-        public bool Send(IList<ArraySegment<byte>> items)
-        {
-            Debug.Assert(m_state == State.Active);
+        //public bool Send(IList<ArraySegment<byte>> items)
+        //{
+        //    Debug.Assert(m_state == State.Active);
 
-            m_out.SocketAsyncEventArgs.BufferList = items;
+        //    m_out.SocketAsyncEventArgs.BufferList = items;
 
-            m_out.Start(false);
-            bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);
+        //    m_out.Start(false);
+        //    bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);
 
-            if (isPending)
-            {
-                m_out.Waiting(false);
+        //    if (isPending)
+        //    {
+        //        m_out.Waiting(false);
 
-                return m_out.IsIdle;
-            }
-            else
-            {
-                m_out.Stop();
+        //        return m_out.IsIdle;
+        //    }
+        //    else
+        //    {
+        //        m_out.Stop();
 
-                if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
-                {
-                    Action(ErrorAction);
-                }
-                else
-                {
-                    Feed(OutSourceId, DoneAction, null);
-                }
-            }
+        //        if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
+        //        {
+        //            Action(ErrorAction);
+        //        }
+        //        else
+        //        {
+        //            Feed(OutSourceId, DoneAction, null);
+        //        }
+        //    }
 
-            return false;
-        }
+        //    return false;
+        //}
 
         public void Receive(byte[] buffer, int offset, int count)
         {
