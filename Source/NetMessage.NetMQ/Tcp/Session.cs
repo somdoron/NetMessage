@@ -14,9 +14,7 @@ using NetMessage.Core.Transport;
 namespace NetMessage.NetMQ.Tcp
 {
     public class Session : StateMachine
-    {
-        public const int SourceId = 60;
-
+    {        
         public const int StoppedEvent = 1;
         public const int ErrorEvent = 2;
 

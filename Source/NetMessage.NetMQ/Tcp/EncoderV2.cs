@@ -23,7 +23,7 @@ namespace NetMessage.NetMQ.Tcp
 
         enum State
         {
-            Idle = 1, NoMessages, Sending, Errored
+            Idle = 1, Active, Sending, Errored
         }
         
         private const int SendMessageAction = 2;
@@ -140,14 +140,14 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case StartAction:
-                                    m_state = State.NoMessages;
+                                    m_state = State.Active;
                                     break;
                             }
                             break;
                     }
                     break;
 
-                case State.NoMessages:
+                case State.Active:
                     switch (sourceId)
                     {
                         case ActionSourceId:
@@ -163,18 +163,20 @@ namespace NetMessage.NetMQ.Tcp
                                         Raise(m_errorEvent, ErrorEvent);
                                         m_state = State.Errored;
                                         m_message = null;
-                                        return;
                                     }
+                                    else
+                                    {
+                                        // set the message to null if we were able to write the message to the buffer
+                                        m_message = null;
 
-                                    m_message = null;
+                                        m_usocket.Send(m_sendBuffer, 0, m_position);
+                                        m_bufferStartIndex = m_position;
 
-                                    m_usocket.Send(m_sendBuffer, 0, m_position);
-                                    m_bufferStartIndex = m_position;
+                                        m_state = State.Sending;
 
-                                    m_state = State.Sending;
-
-                                    // because the buffer is not full we let the session and pipe now the message was sent
-                                    m_pipeBase.OnSent();                                    
+                                        // if the message is written to the buffer we consider the message as sent
+                                        m_pipeBase.OnSent();
+                                    }
 
                                     break;
                             }
@@ -188,9 +190,10 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case SendMessageAction:
-                                    // we are currently sending, let's collect the messages
+                                    // we are currently sending, 
 
-                                    // only if buffer is not full continue, if not, we are not signalling the pipe so no new messages will come
+                                    // we add the message to the buffer, if the add succeed we consider the message as sent, signalling the pipe
+                                    // and set the message to null, when the send will complete we will send the messages that were aggregated
                                     if (AddMessage(m_message))
                                     {
                                         m_message = null;
@@ -199,20 +202,22 @@ namespace NetMessage.NetMQ.Tcp
                                     break;
                                 case USocketSentAction:
 
-                                    // if we have data waiting
+                                    // if we have data that was not sent
                                     if (m_position != m_bufferStartIndex)
                                     {
                                         m_usocket.Send(m_sendBuffer, m_bufferStartIndex, m_position - m_bufferStartIndex);
                                         m_bufferStartIndex = m_position;                                        
                                     }
+                                    // if we have message that was not able to be written because the buffer is full we send it now
                                     else if (m_message != null)
                                     {
-                                        m_state = State.NoMessages;
+                                        m_state = State.Active;
                                         Action(SendMessageAction);
                                     }
                                     else
                                     {
-                                        m_state = State.NoMessages;
+                                        // nothign to send, continue wait for a message
+                                        m_state = State.Active;
                                     }
                                     break;
                             }
