@@ -19,8 +19,8 @@ namespace NetMessage.NetMQ.Tcp
             Sending,
             Receiving,
             SendingIdentity,
-            ReceivingIdentity,
-            StoppingDecoder,
+            ReceivingIdentitySizeAndFlag,
+            ReceivingIdentityBody,
             StoppingTimerError,
             StoppingTimerDone,
             Done,
@@ -32,9 +32,7 @@ namespace NetMessage.NetMQ.Tcp
 
         private const int USocketSourceId = 1;
         private const int TimerSourceId = 2;
-        private const int DecoderSourceId = 3;
-        private const int EncoderSourceId = 4;
-
+        
         private const int Revision = 0x01;
         private const int SocketTypeByteLocation = 11;
         private const int RevisionLocation = 10;
@@ -50,12 +48,11 @@ namespace NetMessage.NetMQ.Tcp
         private byte[] m_inGreeting;
 
         private int m_inGreetingReceived;
-
         private Timer m_timer;
-        private NetMQMessage m_receivedIdentity;
 
-        private DecoderBase m_decoder;
-        private EncoderBase m_encoder;
+        private byte[] m_receivedIdentityBuffer;
+        private int m_receivedIdentityBytes;
+        private int m_identitySize;
 
         public ZMTPHandshake(int sourceId, StateMachine owner)
             : base(sourceId, owner)
@@ -73,6 +70,9 @@ namespace NetMessage.NetMQ.Tcp
             m_doneEvent = new StateMachineEvent();
             m_state = State.Idle;
             m_timer = new Timer(TimerSourceId, this);
+
+            // the maximum message size of an identity is 255 bytes
+            m_receivedIdentityBuffer = new byte[255];
         }
 
         public override void Dispose()
@@ -87,22 +87,14 @@ namespace NetMessage.NetMQ.Tcp
             get { return IsStateMachineIdle; }
         }
 
-        public override DecoderBase Decoder
+        public override DecoderBase CreateDecoder(int sourceId, StateMachine owner)
         {
-            get
-            {
-                return m_decoder;
-            }
-
+            return new DecoderV2(sourceId, owner, m_pipeBase);
         }
 
-        public override EncoderBase Encoder
+        public override EncoderBase CreateEncoder(int sourceId, StateMachine owner)
         {
-            get
-            {
-                return m_encoder;
-            }
-
+            return new EncoderV2(sourceId, owner, m_pipeBase);
         }
 
         public override void Start(USocket socket, PipeBase<NetMQMessage> pipe)
@@ -270,14 +262,11 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case USocket.SentEvent:
-                                    // creating the encoder
-                                    m_encoder = new EncoderV2(EncoderSourceId, this, m_pipeBase);
-                                    Encoder.Start(m_usocket);
+                                    m_receivedIdentityBytes = 0;
 
-                                    m_decoder = new DecoderV2(DecoderSourceId, this);
-                                    m_receivedIdentity = new NetMQMessage();
-                                    Decoder.Start(m_usocket, m_receivedIdentity);
-                                    m_state = State.ReceivingIdentity;
+                                    // receiving the first two bytes of the identity
+                                    m_usocket.Receive(m_receivedIdentityBuffer, 0, 2);
+                                    m_state = State.ReceivingIdentitySizeAndFlag;
                                     break;
                                 case USocket.ShutdownEvent:
                                     break;
@@ -298,41 +287,53 @@ namespace NetMessage.NetMQ.Tcp
                             break;
                     }
                     break;
-
-                case State.ReceivingIdentity:
+                case State.ReceivingIdentitySizeAndFlag:
                     switch (sourceId)
                     {
                         case USocketSourceId:
                             switch (type)
                             {
                                 case USocket.ReceivedEvent:
-                                    Decoder.Received();
+                                    m_receivedIdentityBytes += m_usocket.BytesReceived;
+
+                                    // first let's check if we received two bytes
+                                    if (m_receivedIdentityBytes != 2)
+                                    {
+                                        m_usocket.Receive(m_receivedIdentityBuffer, m_receivedIdentityBytes,
+                                            2 - m_receivedIdentityBytes);
+                                    }
+                                    else
+                                    {
+                                        // first flag must be zero
+                                        if (m_receivedIdentityBuffer[0] != 0)
+                                        {
+                                            m_timer.Stop();
+                                            m_state = State.StoppingTimerError;
+                                        }
+                                        else
+                                        {
+                                            m_identitySize = m_receivedIdentityBuffer[1];
+
+                                            // if zero body identity complete the handshake
+                                            if (m_identitySize == 0)
+                                            {
+                                                m_timer.Stop();
+                                                m_state = State.StoppingTimerDone;
+                                            }
+                                            else
+                                            {
+                                                m_receivedIdentityBytes = 0;
+                                                m_usocket.Receive(m_receivedIdentityBuffer, 0, m_identitySize);
+                                                m_state = State.ReceivingIdentityBody;
+                                            }
+                                        }
+                                    }
                                     break;
                                 case USocket.ShutdownEvent:
                                     break;
                                 case USocket.ErrorEvent:
-                                    // TODO: stop decoder as well
                                     m_timer.Stop();
-                                    m_decoder.Stop();
                                     m_state = State.StoppingTimerError;
-                                    break;
-                            }
-                            break;
-                        case DecoderSourceId:
-                            switch (type)
-                            {
-                                case DecoderBase.MessageReceivedEvent:
-                                    // we ignore the identity for the moment
-                                    Debug.Assert(m_receivedIdentity.FrameCount == 1 && m_receivedIdentity.First.MessageSize <= 255);
-                                    m_receivedIdentity = null;
-                                    Decoder.Stop();
-                                    m_state = State.StoppingDecoder;
-                                    break;
-                                case DecoderBase.ErrorEvent:
-                                    m_timer.Stop();
-                                    m_decoder.Stop();
-                                    m_state = State.StoppingTimerError;
-                                    break;
                                     break;
                             }
                             break;
@@ -341,27 +342,43 @@ namespace NetMessage.NetMQ.Tcp
                             {
                                 case Timer.TimeOutEvent:
                                     m_timer.Stop();
-                                    m_decoder.Stop();
                                     m_state = State.StoppingTimerError;
                                     break;
                             }
                             break;
                     }
                     break;
-                case State.StoppingDecoder:
+                case State.ReceivingIdentityBody:
                     switch (sourceId)
                     {
-                        case DecoderSourceId:
+                        case USocketSourceId:
                             switch (type)
                             {
-                                case DecoderBase.StoppedEvent:
-                                    // stopping the timer
+                                case USocket.ReceivedEvent:
+                                    m_receivedIdentityBytes += m_usocket.BytesReceived;
+
+                                    // first let's check if we received two bytes
+                                    if (m_receivedIdentityBytes != m_identitySize)
+                                    {
+                                        m_usocket.Receive(m_receivedIdentityBuffer, m_receivedIdentityBytes,
+                                            m_identitySize - m_receivedIdentityBytes);
+                                    }
+                                    else
+                                    {
+                                        // we received all the identity, let's complete the handshake
+                                        // if zero body identity complete the handshake
+                                        m_timer.Stop();
+                                        m_state = State.StoppingTimerDone;
+                                    }
+                                    break;
+                                case USocket.ShutdownEvent:
+                                    break;
+                                case USocket.ErrorEvent:
                                     m_timer.Stop();
-                                    m_state = State.StoppingTimerDone;
+                                    m_state = State.StoppingTimerError;
                                     break;
                             }
                             break;
-
                         case TimerSourceId:
                             switch (type)
                             {
@@ -384,24 +401,10 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case Timer.StoppedEvent:
-                                    if ((m_decoder == null || m_decoder.IsIdle))
-                                    {
-                                        DoneError();
-                                    }
+                                    DoneError();
                                     break;
                             }
-                            break;
-                        case DecoderSourceId:
-                            switch (type)
-                            {
-                                case DecoderBase.StoppedEvent:
-                                    if (m_timer.IsIdle)
-                                    {
-                                        DoneError();
-                                    }
-                                    break;
-                            }
-                            break;
+                            break;                        
                     }
                     break;
                 case State.StoppingTimerDone:

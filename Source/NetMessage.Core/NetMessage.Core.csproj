@@ -62,6 +62,7 @@
     <Compile Include="Transport\Transport.cs" />
     <Compile Include="Transport\OptionSet.cs" />
     <Compile Include="Transport\Utils\Backoff.cs" />
+    <Compile Include="Transport\Utils\BufferUtility.cs" />
     <Compile Include="Transport\Utils\DNS.cs" />
     <Compile Include="Transport\Utils\AddressUtility.cs" />
     <Compile Include="Utils\Signaler.cs" />

@@ -57,32 +57,13 @@ namespace NetMessage.NetMQ.Tcp
             Stopping
         }
 
-        enum InState
-        {
-            Receiving = 1,
-            Stopping,
-            HasMessage
-        }
-
-        enum OutState
-        {
-            Idle = 1,
-            Sending,
-            Stopping
-        }
-
         private State m_state;
 
         private USocket m_usocket;
         private StateMachine m_usocketOwner;
         private int m_usocketOwnerSourceId;
 
-        private Pipe m_pipe;
-
-        private InState m_inState;
-        private NetMQMessage m_inMessage;
-
-        private OutState m_outState;
+        private Pipe m_pipe;               
 
         private StateMachineEvent m_doneEvent;
 
@@ -150,26 +131,18 @@ namespace NetMessage.NetMQ.Tcp
 
         private PipeStatus Send(NetMQMessage message)
         {
-            Debug.Assert(m_state == State.Active);
-            Debug.Assert(m_outState == OutState.Idle);
+            Debug.Assert(m_state == State.Active);            
 
             m_encoder.Send(message);
-
-            m_outState = OutState.Sending;
-
+            
             return PipeStatus.Ok;
         }
 
         private PipeStatus Receive(out NetMQMessage message)
         {
-            Debug.Assert(m_state == State.Active);
-            Debug.Assert(m_inState == InState.HasMessage);
-
-            message = m_inMessage;
-            m_inMessage = new NetMQMessage();
-
-            m_decoder.Start(m_usocket, m_inMessage);
-            m_inState = InState.Receiving;
+            Debug.Assert(m_state == State.Active);            
+            
+            m_decoder.Receive(out message);            
 
             return PipeStatus.Ok;
         }
@@ -183,7 +156,12 @@ namespace NetMessage.NetMQ.Tcp
                 if (m_decoder != null && !m_decoder.IsIdle)
                 {
                     m_decoder.Stop();
-                }                
+                }
+
+                if (m_encoder != null && !m_encoder.IsIdle)
+                {
+                    m_encoder.Stop();
+                }
 
                 if (!m_handshake.IsIdle)
                 {
@@ -195,7 +173,7 @@ namespace NetMessage.NetMQ.Tcp
 
             if (m_state == State.Stopping)
             {
-                if ((m_decoder == null || m_decoder.IsIdle) && m_handshake.IsIdle)
+                if ((m_decoder == null || m_decoder.IsIdle) && (m_encoder == null || m_encoder.IsIdle)  && m_handshake.IsIdle)
                 {
                     m_usocket.SwapOwner(ref m_usocketOwner, ref m_usocketOwnerSourceId);
                     m_usocket = null;
@@ -236,18 +214,7 @@ namespace NetMessage.NetMQ.Tcp
                         case HandshakeSourceId:
                             switch (type)
                             {
-                                case HandshakeBase.DoneEvent:
-                                    m_decoder = m_handshake.Decoder;
-
-                                    StateMachine decoderOwner = this;
-                                    int decoderSourceId = DecoderSourceId;
-                                    m_decoder.SwapOwner(ref decoderOwner, ref decoderSourceId);
-
-                                    m_encoder = m_handshake.Encoder;
-                                    StateMachine encoderOwner = this;
-                                    int encoderSourceId = EncoderSourceId;
-                                    m_encoder.SwapOwner(ref encoderOwner, ref encoderSourceId);                                    
-
+                                case HandshakeBase.DoneEvent:                                    
                                     m_handshake.Stop();
                                     m_state = State.StoppingHandshake;
                                     break;
@@ -266,12 +233,13 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case HandshakeBase.StoppedEvent:
-                                    m_pipe.Start();
-                                    m_inMessage = new NetMQMessage();
-                                    m_decoder.Start(m_usocket, m_inMessage);
-                                    m_inState = InState.Receiving;
+                                    m_decoder = m_handshake.CreateDecoder(DecoderSourceId, this);                                    
+                                    m_encoder = m_handshake.CreateEncoder(EncoderSourceId, this);
+                                    m_encoder.Start(m_usocket);
+                                    m_decoder.Start(m_usocket);
 
-                                    m_outState = OutState.Idle;
+                                    m_pipe.Start();
+                                    
                                     m_state = State.Active;
                                     break;
                             }
@@ -303,11 +271,7 @@ namespace NetMessage.NetMQ.Tcp
                             break;
                         case EncoderSourceId:
                             switch (type)
-                            {
-                                case EncoderBase.MessageSentEvent:
-                                    Debug.Assert(m_outState == OutState.Sending);                                    
-                                    m_outState = OutState.Idle;
-                                    break;                                
+                            {                                
                                 case EncoderBase.ErrorEvent:
                                     m_pipe.Stop();
                                     Raise(m_doneEvent, ErrorEvent);
@@ -317,19 +281,7 @@ namespace NetMessage.NetMQ.Tcp
                             break;
                         case DecoderSourceId:
                             switch (type)
-                            {
-                                case DecoderBase.MessageReceivedEvent:
-                                    Debug.Assert(m_inState == InState.Receiving);
-
-                                    m_decoder.Stop();
-                                    m_inState = InState.Stopping;
-                                    break;
-                                case DecoderBase.StoppedEvent:
-                                    Debug.Assert(m_inState == InState.Stopping);
-
-                                    m_inState = InState.HasMessage;
-                                    m_pipe.OnReceived();
-                                    break;
+                            {                                
                                 case DecoderBase.ErrorEvent:
                                     m_pipe.Stop();
                                     Raise(m_doneEvent, ErrorEvent);

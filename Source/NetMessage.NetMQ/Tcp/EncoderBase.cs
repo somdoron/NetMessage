@@ -8,34 +8,34 @@ using NetMessage.Core.AsyncIO;
 namespace NetMessage.NetMQ.Tcp
 {
     public abstract class EncoderBase : StateMachine
-    {
-        public const int MessageSentEvent = 1;        
-        public const int ErrorEvent = 3;
+    {        
+        public const int ErrorEvent = 1;
 
-        protected const int BufferSentAction =1;
+        protected const int USocketSentAction =1;
 
         protected EncoderBase(int sourceId, StateMachine owner)
             : base(sourceId, owner)
         {
         }
 
-        public abstract bool NoDelay
-        {
-            get; set; }
-
         public void Sent()
         {
-            Action(BufferSentAction);
+            Action(USocketSentAction);
         }
 
-        public void SwapOwner(ref StateMachine owner, ref int ownerSourceId)
+        public bool IsIdle
         {
-            SwapStateMachineOwner(ref owner, ref ownerSourceId);
+            get { return IsStateMachineIdle; }
         }
         
         public abstract void Start(USocket socket);
 
         public abstract void Send(NetMQMessage message);
+
+        public virtual void Stop()
+        {
+            StopStateMachine();
+        }
 
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -10,32 +11,28 @@ using System.Threading.Tasks;
 using NetMessage.Core;
 using NetMessage.Core.AsyncIO;
 using NetMessage.Core.Transport;
+using NetMessage.Core.Transport.Utils;
 
 namespace NetMessage.NetMQ.Tcp
 {
     public class EncoderV2 : EncoderBase
     {
-        public int SocketSendBufferSize = 1024 * 2;
+        // it's recommended to have a size bigger than MTU, to make sure each time the socket deliver a message is at least two message in 
+        // order to receive an ack immediatly and not delayed ack
+        public int SocketSendBufferSize = 1024 * 8;
 
         enum State
         {
             Idle = 1, NoMessages, Sending, Errored
         }
-
-        private const int TimerSourceId = 1;
-
-        private const int MaximumPacketSize = 1460;
-        private const int SmallMessagesTimerInterval = 10;
-
+        
         private const int SendMessageAction = 2;
 
         private State m_state;
-        private StateMachineEvent m_doneEvent;
+        private StateMachineEvent m_errorEvent;
 
-        private readonly PipeBase<NetMQMessage> m_pipeBase;
+        private PipeBase<NetMQMessage> m_pipeBase;
         private USocket m_usocket;
-
-        private Timer m_timer;
 
         private byte[] m_sendBuffer;
         private int m_position;
@@ -49,29 +46,23 @@ namespace NetMessage.NetMQ.Tcp
         {
             m_pipeBase = pipeBase;
             m_state = State.Idle;
-            m_doneEvent = new StateMachineEvent();
+            m_errorEvent = new StateMachineEvent();
 
             m_sendBufferSize = (int)pipeBase.GetOption(SocketOption.SendBuffer) - SocketSendBufferSize;
-
-            m_sendBuffer = new byte[m_sendBufferSize * 2];
-            m_timer = new Timer(TimerSourceId, this);
+            m_sendBuffer = new byte[m_sendBufferSize * 2];            
 
             m_position = 0;
             m_bufferStartIndex = 0;
         }
 
-        //public override bool IsIdle
-        //{
-        //    get
-        //    {
-        //        return IsStateMachineIdle;
-        //    }
-        //}
-
-        public override bool NoDelay
+        public override void Dispose()
         {
-            get;
-            set;
+            m_sendBuffer = null;
+            m_errorEvent.Dispose();
+            m_usocket = null;
+            m_pipeBase = null;
+            m_message = null;
+            base.Dispose();
         }
 
         public override void Start(USocket usocket)
@@ -112,7 +103,7 @@ namespace NetMessage.NetMQ.Tcp
 
                 if (largeMessage == 2)
                 {
-                    PutLong(m_sendBuffer, position + 1, frame.MessageSize);
+                    BufferUtility.WriteLong(m_sendBuffer, position + 1, frame.MessageSize);
                     position += 9;
                 }
                 else
@@ -127,21 +118,9 @@ namespace NetMessage.NetMQ.Tcp
 
             m_position = position;
             return true;
-        }
+        }      
 
-        private void PutLong(byte[] buffer, int offset, long value)
-        {
-            buffer[offset] = (byte)(((value) >> 56) & 0xff);
-            buffer[offset + 1] = (byte)(((value) >> 48) & 0xff);
-            buffer[offset + 2] = (byte)(((value) >> 40) & 0xff);
-            buffer[offset + 3] = (byte)(((value) >> 32) & 0xff);
-            buffer[offset + 4] = (byte)(((value) >> 24) & 0xff);
-            buffer[offset + 5] = (byte)(((value) >> 16) & 0xff);
-            buffer[offset + 6] = (byte)(((value) >> 8) & 0xff);
-            buffer[offset + 7] = (byte)(value & 0xff);
-        }
-
-        protected override void Shutdown(int sourceId, int type, Core.AsyncIO.StateMachine source)
+        protected override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
@@ -181,7 +160,7 @@ namespace NetMessage.NetMQ.Tcp
                                     // we don't support messages that are larger than the buffer
                                     if (!AddMessage(m_message))
                                     {
-                                        Raise(m_doneEvent, ErrorEvent);
+                                        Raise(m_errorEvent, ErrorEvent);
                                         m_state = State.Errored;
                                         m_message = null;
                                         return;
@@ -195,8 +174,7 @@ namespace NetMessage.NetMQ.Tcp
                                     m_state = State.Sending;
 
                                     // because the buffer is not full we let the session and pipe now the message was sent
-                                    m_pipeBase.OnSent();
-                                    Raise(m_doneEvent, MessageSentEvent);
+                                    m_pipeBase.OnSent();                                    
 
                                     break;
                             }
@@ -216,12 +194,10 @@ namespace NetMessage.NetMQ.Tcp
                                     if (AddMessage(m_message))
                                     {
                                         m_message = null;
-                                        m_pipeBase.OnSent();
-
-                                        Raise(m_doneEvent, MessageSentEvent);
+                                        m_pipeBase.OnSent();                                        
                                     }
                                     break;
-                                case MessageSentEvent:
+                                case USocketSentAction:
 
                                     // if we have data waiting
                                     if (m_position != m_bufferStartIndex)
@@ -245,7 +221,5 @@ namespace NetMessage.NetMQ.Tcp
                     break;
             }
         }
-
-
     }
 }

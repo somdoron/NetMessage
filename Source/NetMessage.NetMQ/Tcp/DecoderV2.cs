@@ -6,15 +6,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core.AsyncIO;
+using NetMessage.Core.Transport;
+using NetMessage.Core.Transport.Utils;
 
 namespace NetMessage.NetMQ.Tcp
-{
-    /// <summary>
-    /// First implementation of ZMTP v2 decoder, not very fast (multiple receive calls for each frame)
-    /// Doesn't support message size larger than 8192
-    /// </summary>
+{    
     public class DecoderV2 : DecoderBase
-    {
+    {        
         enum State
         {
             Idle = 1,
@@ -22,17 +20,19 @@ namespace NetMessage.NetMQ.Tcp
             ReadingOneByteSize,
             ReadingEightByteSize,
             ReadingBody,
-            Done,
-        }
+            HasMessage,
+            Error,
+        }        
 
-        public const int ReceiveBufferSize = 1024 * 8;        
+        public const int BufferSize = 1024 * 8;        
 
         private const int NextAction = 2;
+        private const int MessageReceivedAction = 3;
 
         private StateMachineEvent m_doneEvent;
         private State m_state;
 
-        private byte[] m_receiveBuffer;
+        private byte[] m_buffer;
         private int m_bytesReceived;
         private int m_position;
         
@@ -42,47 +42,46 @@ namespace NetMessage.NetMQ.Tcp
         private NetMQMessage m_message;
         private USocket m_usocket;
 
-        public DecoderV2(int sourceId, StateMachine owner)
+        private readonly PipeBase<NetMQMessage> m_pipeBase;
+
+        public DecoderV2(int sourceId, StateMachine owner, PipeBase<NetMQMessage> pipeBase)
             : base(sourceId, owner)
         {
-            m_receiveBuffer = new byte[ReceiveBufferSize * 2];
+            m_pipeBase = pipeBase;
+            m_buffer = new byte[BufferSize * 2];
             m_state = State.Idle;
             m_doneEvent = new StateMachineEvent();
             m_bytesReceived = 0;
             m_position = 0;
-        }
+        }    
 
-        public override bool IsIdle
-        {
-            get
-            {
-                return IsStateMachineIdle;
-            }
-        }
-
-        public override void Start(USocket usocket, NetMQMessage message)
+        public override void Start(USocket usocket)
         {
             Debug.Assert(m_state == State.Idle);
 
-            m_usocket = usocket;
-            m_message = message;
+            m_usocket = usocket;            
 
             StartStateMachine();
         }
 
-        public override void Stop()
+        public override void Receive(out NetMQMessage message)
         {
-            StopStateMachine();
-        }
+            Debug.Assert(m_state == State.HasMessage);
+
+            message = m_message;            
+            m_message = new NetMQMessage();
+
+            Action(MessageReceivedAction);
+        }      
 
         protected override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
-                Debug.Assert(m_state == State.Done || m_state == State.ReadingFlag);
+                Debug.Assert(m_state == State.HasMessage || m_state == State.ReadingFlag);
 
                 m_state = State.Idle;
-                Stopped(StoppedEvent);
+                StoppedNoEvent();
             }
         }
 
@@ -94,7 +93,7 @@ namespace NetMessage.NetMQ.Tcp
             }
             else
             {
-                int flag = m_receiveBuffer[m_position];
+                int flag = m_buffer[m_position];
                 m_position++;
 
                 m_isMore = (flag & 1) == 1;
@@ -120,7 +119,7 @@ namespace NetMessage.NetMQ.Tcp
             }
             else
             {
-                m_size = m_receiveBuffer[m_position];
+                m_size = m_buffer[m_position];
                 m_position++;
 
                 m_state = State.ReadingBody;
@@ -137,7 +136,7 @@ namespace NetMessage.NetMQ.Tcp
             }
             else
             {
-                long size = ReadLong(m_receiveBuffer, m_position);
+                long size = BufferUtility.ReadLong(m_buffer, m_position);
 
                 m_position += 8;
                 m_size = (int)size;
@@ -149,11 +148,11 @@ namespace NetMessage.NetMQ.Tcp
 
         private void ReadBody()
         {
-            if (m_size > ReceiveBufferSize)
+            if (m_size > BufferSize)
             {
                 Debug.Assert(false, "Frame size too large");
                 Raise(m_doneEvent, DecoderBase.ErrorEvent);
-                m_state = State.Done;
+                m_state = State.Error;
             }
             else
             {
@@ -172,7 +171,7 @@ namespace NetMessage.NetMQ.Tcp
                     else
                     {                        
                         byte[] buffer = new byte[m_size];
-                        Buffer.BlockCopy(m_receiveBuffer, m_position, buffer, 0, m_size);
+                        Buffer.BlockCopy(m_buffer, m_position, buffer, 0, m_size);
                         m_message.Append(buffer);
 
                         m_position += m_size;
@@ -185,9 +184,8 @@ namespace NetMessage.NetMQ.Tcp
                     }
                     else
                     {
-                        m_message = null;
-                        Raise(m_doneEvent, DecoderBase.MessageReceivedEvent);
-                        m_state = State.Done;
+                        m_state = State.HasMessage;
+                        m_pipeBase.OnReceived();                                               
                     }
                 }
             }
@@ -195,17 +193,17 @@ namespace NetMessage.NetMQ.Tcp
         
         private void ReceiveMore()
         {
-            if (m_bytesReceived + ReceiveBufferSize > m_receiveBuffer.Length)
+            if (m_bytesReceived + BufferSize > m_buffer.Length)
             {
                 m_bytesReceived = m_bytesReceived - m_position;
 
                 // copy the data to the begining of the buffer
-                Buffer.BlockCopy(m_receiveBuffer, m_position, m_receiveBuffer, 0, m_bytesReceived);
+                Buffer.BlockCopy(m_buffer, m_position, m_buffer, 0, m_bytesReceived);
 
                 m_position = 0;
             }
 
-            m_usocket.Receive(m_receiveBuffer, m_bytesReceived, ReceiveBufferSize);
+            m_usocket.Receive(m_buffer, m_bytesReceived, BufferSize);
         }
 
         protected override void Handle(int sourceId, int type, StateMachine source)
@@ -219,9 +217,23 @@ namespace NetMessage.NetMQ.Tcp
                             switch (type)
                             {
                                 case StartAction:
+                                    m_message = new NetMQMessage();
                                     m_state = State.ReadingFlag;
                                     Action(NextAction);
-
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+                case State.HasMessage:
+                    switch (sourceId)
+                    {
+                        case ActionSourceId:
+                            switch (type)
+                            {
+                                case MessageReceivedAction:
+                                    m_state = State.ReadingFlag;
+                                    Action(NextAction);
                                     break;
                             }
                             break;
@@ -233,7 +245,7 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case ReceivedAction:
+                                case USocketReceivedAction:
                                     m_bytesReceived += m_usocket.BytesReceived;
                                     ReadFlag();
                                     break;
@@ -251,7 +263,7 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case ReceivedAction:
+                                case USocketReceivedAction:
                                     m_bytesReceived += m_usocket.BytesReceived;
                                     ReadOneByteSize();
                                     break;
@@ -269,7 +281,7 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case ReceivedAction:
+                                case USocketReceivedAction:
                                     m_bytesReceived += m_usocket.BytesReceived;
                                     ReadEightByteSize();
                                     break;
@@ -286,7 +298,7 @@ namespace NetMessage.NetMQ.Tcp
                         case ActionSourceId:
                             switch (type)
                             {
-                                case ReceivedAction:
+                                case USocketReceivedAction:
                                     m_bytesReceived += m_usocket.BytesReceived;
                                     ReadBody();
                                     break;
@@ -300,16 +312,6 @@ namespace NetMessage.NetMQ.Tcp
             }
         }
 
-        private long ReadLong(byte[] bytes, int offset)
-        {
-            return (((long)bytes[offset]) << 56) |
-                    (((long)bytes[offset + 1]) << 48) |
-                    (((long)bytes[offset + 2]) << 40) |
-                    (((long)bytes[offset + 3]) << 32) |
-                    (((long)bytes[offset + 4]) << 24) |
-                    (((long)bytes[offset + 5]) << 16) |
-                    (((long)bytes[offset + 6]) << 8) |
-                    ((long)bytes[offset + 7]);
-        }
+      
     }
 }

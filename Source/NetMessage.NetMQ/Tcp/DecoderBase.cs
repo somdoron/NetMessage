@@ -8,12 +8,10 @@ using NetMessage.Core.AsyncIO;
 namespace NetMessage.NetMQ.Tcp
 {
     public abstract class DecoderBase : StateMachine
-    {
-        public const int MessageReceivedEvent = 1;
-        public const int StoppedEvent = 2;
+    {                
         public const int ErrorEvent = 3;
 
-        protected const int ReceivedAction = 1;
+        protected const int USocketReceivedAction = 1;
 
 
         protected DecoderBase(int sourceId, StateMachine owner)
@@ -24,18 +22,22 @@ namespace NetMessage.NetMQ.Tcp
         
         public void Received()
         {
-            Action(ReceivedAction);            
+            Action(USocketReceivedAction);            
         }
 
-        public void SwapOwner(ref StateMachine owner, ref int ownerSourceId)
+
+        public bool IsIdle
         {
-            SwapStateMachineOwner(ref owner, ref ownerSourceId);
+            get { return IsStateMachineIdle; }
         }
 
-        public abstract bool IsIdle { get; }
+        public abstract void Start(USocket socket);
 
-        public abstract void Start(USocket socket, NetMQMessage message);
+        public abstract void Receive(out NetMQMessage message);
 
-        public abstract void Stop();
+        public void Stop()
+        {
+            StopStateMachine();
+        }
     }
 }

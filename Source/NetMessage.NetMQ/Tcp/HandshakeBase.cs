@@ -22,8 +22,8 @@ namespace NetMessage.NetMQ.Tcp
 
         public abstract bool IsIdle { get; }
 
-        public abstract DecoderBase Decoder { get; }
-        public abstract EncoderBase Encoder { get; }
+        public abstract DecoderBase CreateDecoder(int sourceId, StateMachine owner);
+        public abstract EncoderBase CreateEncoder(int sourceId, StateMachine owner);
 
         public abstract void Start(USocket socket, PipeBase<NetMQMessage> pipe);
 
