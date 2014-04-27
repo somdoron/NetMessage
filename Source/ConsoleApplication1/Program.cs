@@ -21,54 +21,27 @@ namespace ConsoleApplication1
             lisenter.Listen(1);
 
             Socket client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            client.ReceiveBufferSize = 0;
+            client.SendBufferSize = 0;
+            client.NoDelay = true;
             client.Connect("localhost", 6666);
 
             Socket server = lisenter.Accept();
+            server.ReceiveBufferSize = 0;
+            server.SendBufferSize = 0;
+            server.NoDelay = true;
 
-            Task.Factory.StartNew(() =>
+            byte[] buffer = new byte[10];
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            for (int i = 0; i < 10000; i++)
             {
-                byte[] buffer = new byte[1000];
-
-                while (true)
-                {
-                    server.Receive(buffer);
-                }
-            });
-
-            byte[] data = new byte[100];
-
-
-            int count = 100000;
-
-            int index = 0;
-
-            Stopwatch stopwatch = new Stopwatch();
-            ManualResetEvent manualResetEvent = new ManualResetEvent(false);
-            
-            SocketAsyncEventArgs socketAsyncEventArgs = new SocketAsyncEventArgs();            
-            socketAsyncEventArgs.Completed += delegate(object sender, SocketAsyncEventArgs eventArgs)
-            {
-                index++;
-
-                if (index == count)
-                {
-                    stopwatch.Stop();
-                    manualResetEvent.Set();
-                }
-
-                socketAsyncEventArgs.SetBuffer(data, 0, data.Length);
-                client.SendAsync(socketAsyncEventArgs);
-            };
-
-            stopwatch.Start();
-
-            socketAsyncEventArgs.SetBuffer(data, 0, data.Length);
-            client.SendAsync(socketAsyncEventArgs);
-
-            manualResetEvent.WaitOne();
-
-            Console.WriteLine("{0:N0} per second", (double)count / stopwatch.ElapsedMilliseconds * 1000);
-            Console.ReadLine();
+                client.Send(buffer);
+                Console.WriteLine("{0:G} {1}", stopwatch.ElapsedMilliseconds, i);
+            }
+           
+            Console.WriteLine("Send completed in {0}ms", stopwatch.ElapsedMilliseconds);
         }
     }
 }

@@ -18,13 +18,7 @@ namespace NetMessage.Core.AsyncIO
         /// Maximum number of iovecs that can be passed to nn_usock_send function.
         /// </summary>
         public const int MaxIOCount = 3;
-
-        /// <summary>
-        /// Size of the buffer used for batch-reads of inbound data. To keep the
-        /// performance optimal make sure that this value is larger than network MTU.
-        /// </summary>
-        public const int BatchSize = 2048;
-
+        
         enum State
         {
             Idle = 1,

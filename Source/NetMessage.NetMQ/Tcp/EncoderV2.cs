@@ -16,10 +16,8 @@ using NetMessage.Core.Transport.Utils;
 namespace NetMessage.NetMQ.Tcp
 {
     public class EncoderV2 : EncoderBase
-    {
-        // it's recommended to have a size bigger than MTU, to make sure each time the socket deliver a message is at least two message in 
-        // order to receive an ack immediatly and not delayed ack
-        public int SocketSendBufferSize = 1024 * 8;
+    {        
+        public int BufferSize = 1024 * 8;
 
         enum State
         {
@@ -37,7 +35,7 @@ namespace NetMessage.NetMQ.Tcp
         private byte[] m_sendBuffer;
         private int m_position;
         private int m_bufferStartIndex;
-        private int m_sendBufferSize;
+       
 
         private NetMQMessage m_message;
 
@@ -48,8 +46,7 @@ namespace NetMessage.NetMQ.Tcp
             m_state = State.Idle;
             m_errorEvent = new StateMachineEvent();
 
-            m_sendBufferSize = (int)pipeBase.GetOption(SocketOption.SendBuffer) - SocketSendBufferSize;
-            m_sendBuffer = new byte[m_sendBufferSize * 2];            
+            m_sendBuffer = new byte[BufferSize * 2];            
 
             m_position = 0;
             m_bufferStartIndex = 0;
@@ -68,8 +65,7 @@ namespace NetMessage.NetMQ.Tcp
         public override void Start(USocket usocket)
         {
             m_usocket = usocket;
-            m_usocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, SocketSendBufferSize);
-
+           
             StartStateMachine();
         }
 
@@ -93,7 +89,7 @@ namespace NetMessage.NetMQ.Tcp
                 int isLast = i == message.FrameCount - 1 ? 0 : 1;
 
                 int size = frame.MessageSize + (largeMessage == 2 ? 9 : 2);
-                if ((position - m_bufferStartIndex) + size > m_sendBufferSize || size + position > m_sendBuffer.Length)
+                if ((position - m_bufferStartIndex) + size > BufferSize || size + position > m_sendBuffer.Length)
                 {
                     // not enough space in buffer to send messages
                     return false;

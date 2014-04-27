@@ -167,7 +167,7 @@ namespace NetMessage.NetMQ.Tcp
                                     int receieBuffer = (int)m_endpoint.GetOption(SocketOption.ReceiveBuffer);
 
                                     // TODO: use direct properties instead, more .net style
-                                    //m_usocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, sendBuffer);
+                                    m_usocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, sendBuffer);
                                     m_usocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, receieBuffer);
                                     m_usocket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, 1);
 

@@ -21,7 +21,7 @@ namespace NetMessage.NetMQ.RemoteThroughput
             int messageSize = int.Parse(args[1]);
             int messageCount = int.Parse(args[2]);
 
-            using (NetMQSocket dealerSocket = SocketFactory.CreateDealer())
+            using (NetMQSocket dealerSocket = NetMQSocket.CreateDealer())
             {
                 dealerSocket.Connect(connectTo);
 
