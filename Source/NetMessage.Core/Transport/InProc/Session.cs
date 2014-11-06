@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using NetMessage.Core;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Core;
-using NetMessage.Core.Transport;
+using NetMessage.AsyncIO;
+using NetMessage.Core;
+using NetMessage.Transport;
 
-namespace NetMessage.NetMQ.InProc
+namespace NetMessage.Transport.InProc
 {
     class Session : StateMachine
     {
@@ -254,7 +254,7 @@ namespace NetMessage.NetMQ.InProc
             }
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             ShutdownEvents(sourceId, type);
 
@@ -264,7 +264,7 @@ namespace NetMessage.NetMQ.InProc
             }
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {

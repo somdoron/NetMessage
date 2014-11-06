@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NetMessage.Core.AsyncIO
+namespace NetMessage.AsyncIO
 {
     delegate void OnContextLeaveDelegate(Context context);
 

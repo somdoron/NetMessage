@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 using AsyncIO;
 using NetSocket = System.Net.Sockets.Socket;
 
-namespace NetMessage.Core.AsyncIO
+namespace NetMessage.AsyncIO
 {
     class USocket : StateMachine, IDisposable
     {
@@ -131,7 +131,7 @@ namespace NetMessage.Core.AsyncIO
             base.SwapStateMachineOwner(ref owner, ref sourceId);
         }
 
-        public void Start(AddressFamily addressFamily, SocketType socketType, ProtocolType protocolType)
+        public void Start(AddressFamily addressFamily, System.Net.Sockets.SocketType socketType, ProtocolType protocolType)
         {
             m_socket = AsyncSocket.Create(addressFamily, socketType, protocolType);
 
@@ -272,7 +272,7 @@ namespace NetMessage.Core.AsyncIO
             }
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == StateMachine.ActionSourceId && type == StateMachine.StopAction)
             {
@@ -364,7 +364,7 @@ namespace NetMessage.Core.AsyncIO
             return m_in.IsIdle && m_out.IsIdle;
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             // TODO: handle all bad actions, state, source
 

@@ -1,10 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.30723.0
+VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ", "NetMessage.NetMQ\NetMessage.NetMQ.csproj", "{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage", "NetMessage.Core\NetMessage.csproj", "{28919040-A12D-4B4E-A478-E149FE99F0CC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApplication1", "ConsoleApplication1\ConsoleApplication1.csproj", "{7C0CD2D6-FC4D-4CD7-96FC-DF13628D9307}"
@@ -21,7 +19,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ.RemoteLate
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Performance", "Performance", "{E01F1EED-AF49-47D4-9E2E-25C1E2A7EBD9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.NetMQ.Tests", "NetMessage.NetMQ.Tests\NetMessage.NetMQ.Tests.csproj", "{7882F60F-9DF5-4BC1-A019-9AB346D045FF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.Tests", "NetMessage.NetMQ.Tests\NetMessage.Tests.csproj", "{7882F60F-9DF5-4BC1-A019-9AB346D045FF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +27,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{28919040-A12D-4B4E-A478-E149FE99F0CC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{28919040-A12D-4B4E-A478-E149FE99F0CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{28919040-A12D-4B4E-A478-E149FE99F0CC}.Release|Any CPU.ActiveCfg = Release|Any CPU

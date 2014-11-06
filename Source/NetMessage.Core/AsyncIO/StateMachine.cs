@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NetMessage.Core.AsyncIO
+namespace NetMessage.AsyncIO
 {
     class StateMachineEvent : IDisposable
     {
@@ -54,7 +54,7 @@ namespace NetMessage.Core.AsyncIO
         }
     }
 
-    abstract class StateMachine : IDisposable
+    public abstract class StateMachine : IDisposable
     {       
         /// <summary>
         /// Special source for actions. It's negative not to clash with user-defined
@@ -99,7 +99,7 @@ namespace NetMessage.Core.AsyncIO
             StateMachineStoppedEvent = new StateMachineEvent();
         }
 
-        public StateMachine(Context context)
+        internal StateMachine(Context context)
         {
             Context = context;
             m_state = State.Idle;
@@ -108,11 +108,11 @@ namespace NetMessage.Core.AsyncIO
             StateMachineStoppedEvent = new StateMachineEvent();
         }
 
-        protected internal StateMachineEvent StateMachineStoppedEvent { get; private set; }
+        internal StateMachineEvent StateMachineStoppedEvent { get; private set; }
 
-        protected abstract void Handle(int sourceId, int type, StateMachine source);
+        internal abstract void Handle(int sourceId, int type, StateMachine source);
 
-        protected abstract void Shutdown(int sourceId, int type, StateMachine source);
+        internal abstract void Shutdown(int sourceId, int type, StateMachine source);
 
         public virtual void Dispose()
         {
@@ -178,7 +178,7 @@ namespace NetMessage.Core.AsyncIO
             Feed(ActionSourceId, type, null);
         }
 
-        protected void Raise(StateMachineEvent @event, int type)
+        internal void Raise(StateMachineEvent @event, int type)
         {
             @event.StateMachine = m_owner;
             @event.SourceId = m_sourceId;
@@ -187,7 +187,7 @@ namespace NetMessage.Core.AsyncIO
             Context.Raise(@event);
         }
 
-        protected void RaiseTo(StateMachine destination, StateMachineEvent @event, int sourceId,
+        internal void RaiseTo(StateMachine destination, StateMachineEvent @event, int sourceId,
             int type, StateMachine source)
         {
             @event.StateMachine = destination;
@@ -209,7 +209,7 @@ namespace NetMessage.Core.AsyncIO
             }
         }
 
-        protected internal Worker ChooseWorker()
+        internal Worker ChooseWorker()
         {
             return Context.ChooseWorker();
         }

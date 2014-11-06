@@ -5,8 +5,8 @@ using System.Linq;
 using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Core;
+using NetMessage.AsyncIO;
+using NetMessage.Core;
 
 namespace NetMessage.Core
 {

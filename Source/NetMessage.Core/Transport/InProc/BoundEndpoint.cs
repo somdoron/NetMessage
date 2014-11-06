@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using NetMessage.AsyncIO;
 using NetMessage.Core;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Core;
-using NetMessage.Core.Transport;
 
-namespace NetMessage.NetMQ.InProc
+namespace NetMessage.Transport.InProc
 {
     class BoundEndpoint : EndpointBase
     {
@@ -52,7 +50,7 @@ namespace NetMessage.NetMQ.InProc
             session.Connect(peer);
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == StateMachine.ActionSourceId && type == StateMachine.StopAction)
             {
@@ -93,7 +91,7 @@ namespace NetMessage.NetMQ.InProc
             // TODO: throw bad state
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {

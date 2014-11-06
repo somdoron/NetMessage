@@ -1,7 +1,6 @@
 ﻿using System;
 using NetMessage.Core;
-using NetMessage.Core.Core;
-using NetMessage.Core.Protocols.Utils;
+using NetMessage.Protocols.Utils;
 
 namespace NetMessage.Protocols
 {
@@ -55,7 +54,7 @@ namespace NetMessage.Protocols
             base.Dispose();
         }
 
-        protected override void Add(IPipe pipe)
+        protected internal override void Add(IPipe pipe)
         {
             int sendPriority = (int)pipe.GetOption(SocketOption.SendPriority);
             int receivePriority = (int)pipe.GetOption(SocketOption.ReceivePriority);
@@ -67,7 +66,7 @@ namespace NetMessage.Protocols
             data.FairQueueingData = m_fairQueueing.Add(pipe, receivePriority);
         }
 
-        protected override void Remove(IPipe pipe)
+        protected internal override void Remove(IPipe pipe)
         {
             Data data = (Data)pipe.Data;
 
@@ -77,19 +76,19 @@ namespace NetMessage.Protocols
             pipe.Data = null;
         }
 
-        protected override void In(IPipe pipe)
+        protected internal override void In(IPipe pipe)
         {
             Data data = (Data)pipe.Data;
             m_fairQueueing.In(data.FairQueueingData);
         }
 
-        protected override void Out(IPipe pipe)
+        protected internal override void Out(IPipe pipe)
         {
             Data data = (Data)pipe.Data;
             m_loadBalancer.Out(data.LoadBalancerData);
         }
 
-        protected override SocketEvents Events
+        protected internal override SocketEvents Events
         {
             get
             {
@@ -98,17 +97,17 @@ namespace NetMessage.Protocols
             }
         }
 
-        protected override SendReceiveResult Send(Message message)
+        protected internal override SendReceiveResult Send(Message message)
         {
             return m_loadBalancer.Send(message);
         }
 
-        protected override SendReceiveResult Receive(out Message message)
+        protected internal override SendReceiveResult Receive(out Message message)
         {
             return m_fairQueueing.Receive(out message);
         }
 
-        protected override void SetOption(int option, object value)
+        protected internal override void SetOption(int option, object value)
         {
             throw new NotSupportedException();
         }

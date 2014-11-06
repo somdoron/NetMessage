@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NetMessage.Core.Transport.Utils
+namespace NetMessage.Transport.Utils
 {
     public static class BufferUtility
     {

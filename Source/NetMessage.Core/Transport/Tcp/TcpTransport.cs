@@ -1,11 +1,10 @@
 ﻿using System;
-using NetMessage.Core.Core;
-using NetMessage.Core.Transport;
-using NetMessage.Core.Transport.Tcp;
+using NetMessage.Core;
+using NetMessage.Transport;
 
-namespace NetMessage.NetMQ.Tcp
+namespace NetMessage.Transport.Tcp
 {
-    class TcpTransport : Transport
+    class TcpTransport : TransportBase
     {
         public override OptionSet GetOptionSet()
         {

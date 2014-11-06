@@ -8,12 +8,12 @@ using System.Runtime.Remoting.Channels;
 using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Core;
-using NetMessage.Core.Transport;
-using NetMessage.Core.Transport.Utils;
+using NetMessage.AsyncIO;
+using NetMessage.Core;
+using NetMessage.Transport;
+using NetMessage.Transport.Utils;
 
-namespace NetMessage.NetMQ.Tcp
+namespace NetMessage.Transport.Tcp
 {
     class ConnectEndpoint : EndpointBase
     {
@@ -88,7 +88,7 @@ namespace NetMessage.NetMQ.Tcp
             base.Dispose();
         }
 
-        protected override void Shutdown(int sourceId, int type, Core.AsyncIO.StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
@@ -129,7 +129,7 @@ namespace NetMessage.NetMQ.Tcp
             }
         }
 
-        protected override void Handle(int sourceId, int type, Core.AsyncIO.StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {
@@ -310,7 +310,7 @@ namespace NetMessage.NetMQ.Tcp
         {
             try
             {
-                m_usocket.Start(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                m_usocket.Start(ipEndPoint.AddressFamily, System.Net.Sockets.SocketType.Stream, ProtocolType.Tcp);
             }
             catch (SocketException)
             {

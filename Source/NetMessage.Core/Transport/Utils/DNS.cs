@@ -6,9 +6,9 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.Core.AsyncIO;
+using NetMessage.AsyncIO;
 
-namespace NetMessage.Core.Transport.Utils
+namespace NetMessage.Transport.Utils
 {
     class DNSResult
     {
@@ -138,7 +138,7 @@ namespace NetMessage.Core.Transport.Utils
             }
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
@@ -163,7 +163,7 @@ namespace NetMessage.Core.Transport.Utils
             }
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {

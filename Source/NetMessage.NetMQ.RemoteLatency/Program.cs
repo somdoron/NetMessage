@@ -21,11 +21,11 @@ namespace NetMessage.NetMQ.RemoteLatency
             int messageSize = int.Parse(args[1]);
             int roundtripCount = int.Parse(args[2]);
 
-            using (var reqSocket = SocketFactory.CreateDealer())
+            using (var reqSocket = Socket.CreateDealer())
             {
                 reqSocket.Connect(connectTo);
 
-                var message = new NetMQMessage();
+                var message = new Message(1);
                 message.Append(new byte[messageSize]);
 
                 var stopWatch = Stopwatch.StartNew();

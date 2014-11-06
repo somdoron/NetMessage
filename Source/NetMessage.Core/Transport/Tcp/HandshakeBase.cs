@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Transport;
+using NetMessage.AsyncIO;
+using NetMessage.Transport;
 
-namespace NetMessage.NetMQ.Tcp
+namespace NetMessage.Transport.Tcp
 {
     abstract class HandshakeBase : StateMachine
     {

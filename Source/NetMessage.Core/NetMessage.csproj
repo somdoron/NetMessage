@@ -53,6 +53,7 @@
     <Compile Include="AsyncIO\Context.cs" />
     <Compile Include="Core\EndpointOptions.cs" />
     <Compile Include="Core\IPipe.cs" />
+    <Compile Include="Frame.cs" />
     <Compile Include="Global.cs" />
     <Compile Include="Message.cs" />
     <Compile Include="Protocols\Dealer.cs" />
@@ -89,7 +90,7 @@
     <Compile Include="Transport\Tcp\TcpOptionSet.cs" />
     <Compile Include="Transport\Tcp\TcpTransport.cs" />
     <Compile Include="Transport\Tcp\ZMTPHandshake.cs" />
-    <Compile Include="Transport\Transport.cs" />
+    <Compile Include="Transport\TransportBase.cs" />
     <Compile Include="Transport\OptionSet.cs" />
     <Compile Include="Transport\Utils\Backoff.cs" />
     <Compile Include="Transport\Utils\BufferUtility.cs" />

@@ -8,8 +8,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AsyncIO;
+using NetMessage.AsyncIO;
 
-namespace NetMessage.Core.AsyncIO
+namespace NetMessage.AsyncIO
 {
     class Worker : IDisposable
     {
@@ -24,6 +25,8 @@ namespace NetMessage.Core.AsyncIO
 
             m_thread = new Thread(Run);
             m_thread.Start();
+
+            m_timerset = new Timerset();
         }
 
         public CompletionPort CompletionPort { get; private set; }

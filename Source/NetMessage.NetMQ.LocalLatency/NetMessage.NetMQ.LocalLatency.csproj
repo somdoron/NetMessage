@@ -52,10 +52,6 @@
       <Project>{28919040-A12D-4B4E-A478-E149FE99F0CC}</Project>
       <Name>NetMessage</Name>
     </ProjectReference>
-    <ProjectReference Include="..\NetMessage.NetMQ\NetMessage.NetMQ.csproj">
-      <Project>{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}</Project>
-      <Name>NetMessage.NetMQ</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

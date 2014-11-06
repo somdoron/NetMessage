@@ -9,11 +9,12 @@ using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Transport;
-using NetMessage.Core.Transport.Utils;
+using NetMessage.AsyncIO;
+using NetMessage.Transport;
+using NetMessage.Transport.Utils;
 
-namespace NetMessage.NetMQ.Tcp
+
+namespace NetMessage.Transport.Tcp
 {
     class EncoderV2 : EncoderBase
     {        
@@ -79,7 +80,7 @@ namespace NetMessage.NetMQ.Tcp
         private bool AddMessage(Message message)
         {
             int position = m_position;
-            NetMQFrame frame;
+            Frame frame;
 
             for (int i = 0; i < message.FrameCount; i++)
             {
@@ -114,9 +115,9 @@ namespace NetMessage.NetMQ.Tcp
 
             m_position = position;
             return true;
-        }      
+        }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
@@ -125,7 +126,7 @@ namespace NetMessage.NetMQ.Tcp
             }
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {

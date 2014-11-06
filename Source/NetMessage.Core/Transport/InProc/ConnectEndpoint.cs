@@ -1,10 +1,8 @@
 ﻿using System.Diagnostics;
+using NetMessage.AsyncIO;
 using NetMessage.Core;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Core;
-using NetMessage.Core.Transport;
 
-namespace NetMessage.NetMQ.InProc
+namespace NetMessage.Transport.InProc
 {
     class ConnectEndpoint : EndpointBase
     {
@@ -44,7 +42,7 @@ namespace NetMessage.NetMQ.InProc
             Action(ConnectAction);
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == StateMachine.ActionSourceId && type == StopAction)
             {
@@ -71,7 +69,7 @@ namespace NetMessage.NetMQ.InProc
             }
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {

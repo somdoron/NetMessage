@@ -8,11 +8,11 @@ using System.Runtime.Remoting.Channels;
 using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Core;
-using NetMessage.Core.Transport;
+using NetMessage.AsyncIO;
+using NetMessage.Core;
+using NetMessage.Transport;
 
-namespace NetMessage.NetMQ.Tcp
+namespace NetMessage.Transport.Tcp
 {
     class Session : StateMachine
     {        
@@ -146,7 +146,7 @@ namespace NetMessage.NetMQ.Tcp
             return PipeStatus.Ok;
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
@@ -189,7 +189,7 @@ namespace NetMessage.NetMQ.Tcp
         }
 
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
 
-namespace NetMessage.NetMQ.Tests
+namespace NetMessage.Tests
 {
     [TestFixture]
     public class SocketTests
@@ -13,20 +13,23 @@ namespace NetMessage.NetMQ.Tests
         [Test]
         public void OneMessage([NUnit.Framework.Values("tcp://127.0.0.1:5555")] string address)
         {
-            using (NetMQSocket server = NetMQSocket.CreateDealer())
+            using (Socket server = Socket.CreateRouter())
             {
                 server.Bind(address);
 
-                using (NetMQSocket client = NetMQSocket.CreateDealer())
+                using (Socket client = Socket.CreateDealer())
                 {
                     client.Connect(address);
 
-                    client.Send("Hello");
+                    Message message = new Message();
+                    message.Append("hello");
 
-                    string message = server.ReceiveString();
+                    client.SendMessage(message);
 
-                    Assert.AreEqual(message,"Hello");
-                    Assert.IsFalse(server.IsMore);
+                    message = server.ReceiveMessage();
+
+                    Assert.AreEqual(message[1].ConvertToString() ,"hello");
+                    Assert.AreEqual(message.FrameCount, 2);
                 }
             }
         }

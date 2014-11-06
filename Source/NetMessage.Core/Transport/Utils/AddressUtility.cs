@@ -2,7 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace NetMessage.Core.Transport.Utils
+namespace NetMessage.Transport.Utils
 {
     public static class AddressUtility
     {

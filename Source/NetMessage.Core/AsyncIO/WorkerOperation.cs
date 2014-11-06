@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NetMessage.Core.AsyncIO
+namespace NetMessage.AsyncIO
 {
     class WorkerOperation : StateMachine
     {        
@@ -39,13 +39,13 @@ namespace NetMessage.Core.AsyncIO
         {
             m_state = State.Idle;
         }
-        
-        protected override void Handle(int sourceId, int type, StateMachine source)
+
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             throw new NotImplementedException();
         }

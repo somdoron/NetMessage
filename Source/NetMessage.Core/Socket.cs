@@ -5,15 +5,16 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Core;
-using NetMessage.Core.Transport;
+using NetMessage.AsyncIO;
+using NetMessage.Core;
+using NetMessage.Transport;
 using NetMessage.Core.Utils;
 using NetMessage.Core;
+using NetMessage.Protocols;
 
-namespace NetMessage.Core
+namespace NetMessage
 {
-    abstract class Socket : StateMachine
+    public class Socket : StateMachine
     {
         public const int StoppedAction = 1;        
 
@@ -63,7 +64,7 @@ namespace NetMessage.Core
 
         private Dictionary<string, OptionSet> m_optionSets;
 
-        public Socket(SocketType socketType) : base(new Context(Global.Pool))
+        internal Socket(SocketType socketType) : base(new Context(Global.Pool))
         {
             // Make sure that at least one message direction is supported.
             Debug.Assert(((socketType.Flags & SocketTypeFlags.NoReceive) == 0) ||
@@ -132,10 +133,7 @@ namespace NetMessage.Core
         internal EndpointOptions EndpointTemplate
         {
             get { return m_endpointTemplate; }
-        }
-
-        protected abstract Transport.Transport GetTransport(string name);
-        
+        }        
 
         public override void Dispose()
         {
@@ -405,7 +403,7 @@ namespace NetMessage.Core
             string protocol = address.Substring(0, delimiterIndex);
             address = address.Substring(delimiterIndex + 3);
 
-            Transport.Transport transport = GetTransport(protocol);
+            TransportBase transport = Global.GetTransport(protocol);
 
             if (transport == null)
             {
@@ -415,7 +413,7 @@ namespace NetMessage.Core
             AddEndpoint(transport, bind, address);
         }
 
-        private int AddEndpoint(Transport.Transport transport, bool bind, string address)
+        private int AddEndpoint(TransportBase transport, bool bind, string address)
         {
             Context.Enter();
             try
@@ -660,7 +658,7 @@ namespace NetMessage.Core
             if (m_optionSets.TryGetValue(name,out optionSet))
                 return optionSet;
 
-            Transport.Transport transport = GetTransport(name);
+            TransportBase transport = Global.GetTransport(name);
 
             if (transport == null)
                 return null;
@@ -675,7 +673,7 @@ namespace NetMessage.Core
             return optionSet;
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == StateMachine.ActionSourceId && type == StateMachine.StopAction)
             {
@@ -748,7 +746,7 @@ namespace NetMessage.Core
             }
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {
@@ -810,5 +808,15 @@ namespace NetMessage.Core
                     break;
             }
         }
+
+        public static Socket CreateDealer()
+        {
+            return new Socket(new Dealer.DealerSocketType());
+        }
+
+        public static Socket CreateRouter()
+        {
+            return new Socket(new Router.RouterSocketType());
+        }        
     }
 }

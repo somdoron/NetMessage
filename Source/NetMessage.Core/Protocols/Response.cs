@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core;
-using NetMessage.Core.Core;
+using NetMessage.Core;
 
-namespace NetMessage.NetMQ.Patterns
+namespace NetMessage.Protocols
 {
     class Response : Router
     {
@@ -32,16 +32,16 @@ namespace NetMessage.NetMQ.Patterns
         //  in process of receiving a request.
         private bool m_sendingReply;
 
-        private List<NetMQFrame> m_identityFrames;
+        private List<Frame> m_identityFrames;
 
         public Response(object hint)
             : base(hint)
         {
             m_sendingReply = false;
-            m_identityFrames = new List<NetMQFrame>();
+            m_identityFrames = new List<Frame>();
         }
 
-        protected override SendReceiveResult Send(Message message)
+        protected internal override SendReceiveResult Send(Message message)
         {
             if (!m_sendingReply)
             {
@@ -73,7 +73,7 @@ namespace NetMessage.NetMQ.Patterns
             return sendResult;
         }
 
-        protected override SendReceiveResult Receive(out Message message)
+        protected internal override SendReceiveResult Receive(out Message message)
         {
             if (m_sendingReply)
             {
@@ -90,7 +90,7 @@ namespace NetMessage.NetMQ.Patterns
             while (true)
             {
                 // remove the and save the identity frame
-                NetMQFrame frame = message.Pop();
+                Frame frame = message.Pop();
 
                 if (message.FrameCount > 0)
                 {                                          
@@ -120,12 +120,13 @@ namespace NetMessage.NetMQ.Patterns
             return SendReceiveResult.Ok;
         }
 
-        protected override SocketEvents Events
+
+        protected internal override SocketEvents Events
         {
             get
             {
-                return base.Events & (m_sendingReply ? SocketEvents.Out : SocketEvents.In);                
+                return base.Events & (m_sendingReply ? SocketEvents.Out : SocketEvents.In);
             }
-        }
+        }       
     }
 }

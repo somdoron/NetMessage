@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Core;
+using NetMessage.AsyncIO;
+using NetMessage.Core;
 
-namespace NetMessage.Core.Transport
+namespace NetMessage.Transport
 {
     abstract class PipeBase : StateMachine, IPipe
     {
@@ -189,12 +189,12 @@ namespace NetMessage.Core.Transport
             return PipeStatus.Release;
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
 
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
 
         }

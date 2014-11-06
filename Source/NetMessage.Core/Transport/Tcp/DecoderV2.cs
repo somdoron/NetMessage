@@ -5,11 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Transport;
-using NetMessage.Core.Transport.Utils;
+using NetMessage.AsyncIO;
+using NetMessage.Transport;
+using NetMessage.Transport.Utils;
 
-namespace NetMessage.NetMQ.Tcp
+namespace NetMessage.Transport.Tcp
 {    
     class DecoderV2 : DecoderBase
     {        
@@ -72,9 +72,9 @@ namespace NetMessage.NetMQ.Tcp
             m_message = new Message();
 
             Action(MessageReceivedAction);
-        }      
+        }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
@@ -206,7 +206,7 @@ namespace NetMessage.NetMQ.Tcp
             m_usocket.Receive(m_buffer, m_bytesReceived, BufferSize);
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace NetMessage.Core.Transport.Tcp
+namespace NetMessage.Transport.Tcp
 {
     public class TcpOptionSet : OptionSet
     {

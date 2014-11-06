@@ -1,9 +1,9 @@
-﻿using NetMessage.Core.Core;
-using NetMessage.Core.Transport;
+﻿using NetMessage.Core;
+using NetMessage.Transport;
 
-namespace NetMessage.NetMQ.InProc
+namespace NetMessage.Transport.InProc
 {
-    class InProcTransport : Core.Transport.Transport
+    class InProcTransport : TransportBase
     {
         public InProcTransport()
         {

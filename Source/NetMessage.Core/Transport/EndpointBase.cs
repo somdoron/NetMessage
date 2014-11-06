@@ -1,8 +1,8 @@
 ﻿using System;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Core;
+using NetMessage.AsyncIO;
+using NetMessage.Core;
 
-namespace NetMessage.Core.Transport
+namespace NetMessage.Transport
 {
     abstract class EndpointBase : StateMachine 
     {

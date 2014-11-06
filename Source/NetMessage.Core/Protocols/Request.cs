@@ -5,10 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core;
-using NetMessage.Core.Core;
+using NetMessage.Core;
 using NetMessage.Protocols;
 
-namespace NetMessage.NetMQ.Patterns
+namespace NetMessage.Protocols
 {
     class Request : Dealer
     {
@@ -40,7 +40,7 @@ namespace NetMessage.NetMQ.Patterns
             m_receivingReply = false;
         }
 
-        protected override SendReceiveResult Send(Message message)
+        protected internal override SendReceiveResult Send(Message message)
         {
             //  If we've sent a request and we still haven't got the reply,
             //  we can't send another request.
@@ -62,7 +62,7 @@ namespace NetMessage.NetMQ.Patterns
             return sendResult;
         }
 
-        protected override SendReceiveResult Receive(out Message message)
+        protected internal override SendReceiveResult Receive(out Message message)
         {
             if (!m_receivingReply)
             {
@@ -90,7 +90,7 @@ namespace NetMessage.NetMQ.Patterns
             return SendReceiveResult.Ok;
         }
 
-        protected override SocketEvents Events
+        protected internal override SocketEvents Events
         {
             get
             {

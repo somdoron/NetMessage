@@ -6,10 +6,10 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Transport;
+using NetMessage.AsyncIO;
+using NetMessage.Transport;
 
-namespace NetMessage.Core.Core
+namespace NetMessage.Core
 {
     class Endpoint: StateMachine
     {
@@ -36,7 +36,7 @@ namespace NetMessage.Core.Core
 
         private bool m_errored= false;
 
-        public Endpoint(Socket socket, int endpointId, Transport.Transport transport, bool bind,
+        public Endpoint(Socket socket, int endpointId, Transport.TransportBase transport, bool bind,
             string address)
             : base(SourceId, socket)
         {
@@ -114,7 +114,7 @@ namespace NetMessage.Core.Core
             return m_socket.IsPeer(socketType);
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == StateMachine.ActionSourceId && type == StateMachine.StopAction)
             {
@@ -135,7 +135,7 @@ namespace NetMessage.Core.Core
             }
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {

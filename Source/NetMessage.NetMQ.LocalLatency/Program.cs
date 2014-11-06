@@ -21,7 +21,7 @@ namespace NetMessage.NetMQ.LocalLatency
             int roundtripCount = int.Parse(args[2]);
 
 
-            using (var routerSocket = SocketFactory.CreateRouter())
+            using (var routerSocket = Socket.CreateRouter())
             {
                 routerSocket.Bind(bindTo);
 

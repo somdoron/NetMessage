@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core;
-using NetMessage.Core.Core;
+using NetMessage.Core;
 
 namespace NetMessage.Core
 {

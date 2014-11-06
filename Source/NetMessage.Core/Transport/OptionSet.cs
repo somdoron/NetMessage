@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace NetMessage.Core.Transport
+namespace NetMessage.Transport
 {
     public abstract class OptionSet : IDisposable
     {

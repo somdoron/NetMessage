@@ -1,10 +1,10 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using System.Net.Sockets;
+using NetMessage.AsyncIO;
 using NetMessage.Core;
-using NetMessage.Core.AsyncIO;
 
-namespace NetMessage.NetMQ.Tcp
+namespace NetMessage.Transport.Tcp
 {
     class AcceptConnection : StateMachine
     {
@@ -98,7 +98,7 @@ namespace NetMessage.NetMQ.Tcp
             StopStateMachine();
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == StateMachine.ActionSourceId && type == StopAction)
             {
@@ -143,7 +143,7 @@ namespace NetMessage.NetMQ.Tcp
             // TODO: throw bad action
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {

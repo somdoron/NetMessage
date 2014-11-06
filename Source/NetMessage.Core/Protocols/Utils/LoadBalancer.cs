@@ -1,6 +1,6 @@
-﻿using NetMessage.Core.Core;
+﻿using NetMessage.Core;
 
-namespace NetMessage.Core.Protocols.Utils
+namespace NetMessage.Protocols.Utils
 {
     public class LoadBalancer
     {

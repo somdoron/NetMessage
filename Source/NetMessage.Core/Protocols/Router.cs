@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using NetMessage.Core;
-using NetMessage.Core.Core;
-using NetMessage.Core.Protocols.Utils;
+using NetMessage.Core;
+using NetMessage.Protocols.Utils;
 
-namespace NetMessage.NetMQ.Patterns
+namespace NetMessage.Protocols
 {
     class Router : SocketBase
     {
@@ -64,7 +64,7 @@ namespace NetMessage.NetMQ.Patterns
             base.Dispose();
         }
 
-        protected override void Add(IPipe pipe)
+        protected internal override void Add(IPipe pipe)
         {
             int receivePriority = (int)pipe.GetOption(SocketOption.ReceivePriority);
 
@@ -79,7 +79,7 @@ namespace NetMessage.NetMQ.Patterns
             m_nextKey++;
         }
 
-        protected override void Remove(IPipe pipe)
+        protected internal override void Remove(IPipe pipe)
         {
             Data data = (Data)pipe.Data;
 
@@ -89,19 +89,19 @@ namespace NetMessage.NetMQ.Patterns
             pipe.Data = null;
         }
 
-        protected override void In(IPipe pipe)
+        protected internal override void In(IPipe pipe)
         {
             Data data = (Data)pipe.Data;
             m_inpipes.In(data.FairQueueingData);
         }
 
-        protected override void Out(IPipe pipe)
+        protected internal override void Out(IPipe pipe)
         {
             Data data = (Data)pipe.Data;
             data.HasOut = true;
         }
 
-        protected override SocketEvents Events
+        protected internal override SocketEvents Events
         {
             get
             {
@@ -110,7 +110,7 @@ namespace NetMessage.NetMQ.Patterns
             }
         }
 
-        protected override SendReceiveResult Send(Message message)
+        protected internal override SendReceiveResult Send(Message message)
         {
             // If we have malformed message (prefix with no subsequent message)
             //  then just silently ignore it.
@@ -119,7 +119,7 @@ namespace NetMessage.NetMQ.Patterns
                 return SendReceiveResult.Ok;
             }
 
-            NetMQFrame keyFrame = message.Pop();
+            Frame keyFrame = message.Pop();
 
             // We treat invalid peer ID as if the peer was non-existent.           
             if (keyFrame.MessageSize < sizeof(uint))
@@ -154,7 +154,7 @@ namespace NetMessage.NetMQ.Patterns
             return SendReceiveResult.Ok;
         }
 
-        protected override SendReceiveResult Receive(out Message message)
+        protected internal override SendReceiveResult Receive(out Message message)
         {
             IPipe pipe;
 
@@ -177,7 +177,7 @@ namespace NetMessage.NetMQ.Patterns
             return SendReceiveResult.Ok;
         }
 
-        protected override void SetOption(int option, object value)
+        protected internal override void SetOption(int option, object value)
         {
             throw new NotSupportedException();
         }

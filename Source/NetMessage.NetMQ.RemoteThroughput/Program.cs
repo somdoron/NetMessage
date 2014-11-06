@@ -21,11 +21,11 @@ namespace NetMessage.NetMQ.RemoteThroughput
             int messageSize = int.Parse(args[1]);
             int messageCount = int.Parse(args[2]);
 
-            using (NetMQSocket dealerSocket = NetMQSocket.CreateDealer())
+            using (Socket dealerSocket = Socket.CreateDealer())
             {
                 dealerSocket.Connect(connectTo);
 
-                var message = new NetMQMessage(1);
+                var message = new Message(1);
                 message.Append(new byte[messageSize]);
                 dealerSocket.SendMessage(message);
 
@@ -33,7 +33,7 @@ namespace NetMessage.NetMQ.RemoteThroughput
 
                 for (int i = 0; i != messageCount-1; i++)
                 {
-                    message = new NetMQMessage(1);
+                    message = new Message(1);
                     message.Append(new byte[messageSize]);
                     dealerSocket.SendMessage(message);
                 }

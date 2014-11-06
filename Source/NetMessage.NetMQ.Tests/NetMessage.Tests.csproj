@@ -7,8 +7,8 @@
     <ProjectGuid>{7882F60F-9DF5-4BC1-A019-9AB346D045FF}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NetMessage.NetMQ.Tests</RootNamespace>
-    <AssemblyName>NetMessage.NetMQ.Tests</AssemblyName>
+    <RootNamespace>NetMessage.Tests</RootNamespace>
+    <AssemblyName>NetMessage.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -52,10 +52,6 @@
     <ProjectReference Include="..\NetMessage.Core\NetMessage.csproj">
       <Project>{28919040-A12D-4B4E-A478-E149FE99F0CC}</Project>
       <Name>NetMessage</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\NetMessage.NetMQ\NetMessage.NetMQ.csproj">
-      <Project>{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}</Project>
-      <Name>NetMessage.NetMQ</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -1,16 +1,17 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Sockets;
+using System.Security;
 using NetMessage.Core;
-using NetMessage.Core.AsyncIO;
-using NetMessage.Core.Core;
-using NetMessage.Core.Transport;
-using NetMessage.Core.Transport.Utils;
-using NetMessage.NetMQ;
+using NetMessage.AsyncIO;
+using NetMessage.Core;
+using NetMessage.Transport;
+using NetMessage.Transport.Utils;
 using SocketType = System.Net.Sockets.SocketType;
 
-namespace NetMessage.NetMQ.Tcp
+namespace NetMessage.Transport.Tcp
 {
     class BoundEndpoint : EndpointBase
     {
@@ -60,7 +61,7 @@ namespace NetMessage.NetMQ.Tcp
             base.Dispose();
         }
 
-        protected override void Shutdown(int sourceId, int type, StateMachine source)
+        internal override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == StateMachine.ActionSourceId && type == StateMachine.StopAction)
             {
@@ -120,7 +121,7 @@ namespace NetMessage.NetMQ.Tcp
             }
         }
 
-        protected override void Handle(int sourceId, int type, StateMachine source)
+        internal override void Handle(int sourceId, int type, StateMachine source)
         {
             switch (m_state)
             {
@@ -180,7 +181,7 @@ namespace NetMessage.NetMQ.Tcp
             var endpoint = AddressUtility.ResolveAddress(Address, ipV4Only);
 
             m_usocket.Start(ipV4Only ? AddressFamily.InterNetwork : AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
-            m_usocket.Bind(endpoint);
+            m_usocket.Bind(endpoint as IPEndPoint);
 
             // TODO: the backlog should be an option
             m_usocket.Listen(100);

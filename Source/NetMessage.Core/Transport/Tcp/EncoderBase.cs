@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.Core.AsyncIO;
+using NetMessage.AsyncIO;
 
-namespace NetMessage.NetMQ.Tcp
+namespace NetMessage.Transport.Tcp
 {
     abstract class EncoderBase : StateMachine
     {        

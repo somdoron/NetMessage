@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace NetMessage.Core.Transport
+namespace NetMessage.Transport
 {
-    abstract class Transport : IDisposable
+    abstract class TransportBase : IDisposable
     {
         public abstract OptionSet GetOptionSet();
 

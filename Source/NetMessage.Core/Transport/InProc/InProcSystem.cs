@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NetMessage.Core;
 
-namespace NetMessage.NetMQ.InProc
+namespace NetMessage.Transport.InProc
 {
     class InProcSystem : IDisposable
     {

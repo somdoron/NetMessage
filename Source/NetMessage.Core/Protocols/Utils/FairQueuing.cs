@@ -1,6 +1,6 @@
-﻿using NetMessage.Core.Core;
+﻿using NetMessage.Core;
 
-namespace NetMessage.Core.Protocols.Utils
+namespace NetMessage.Protocols.Utils
 {
     public class FairQueuing
     {
@@ -50,7 +50,7 @@ namespace NetMessage.Core.Protocols.Utils
             m_priorityList.Activate(data.PriorityListData);
         }
 
-        public SendReceiveResult Receive(Message message)
+        public SendReceiveResult Receive(out Message message)
         {
             IPipe pipe;
 

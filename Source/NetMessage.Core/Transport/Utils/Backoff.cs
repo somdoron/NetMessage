@@ -4,9 +4,9 @@ using System.Data.Odbc;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NetMessage.Core.AsyncIO;
+using NetMessage.AsyncIO;
 
-namespace NetMessage.Core.Transport.Utils
+namespace NetMessage.Transport.Utils
 {
     class Backoff : IDisposable
     {
