@@ -10,13 +10,13 @@ using NetMessage.Core.AsyncIO;
 
 namespace NetMessage.Core.Transport.Utils
 {
-    public class DNSResult
+    class DNSResult
     {
         public bool Error { get; set; }
         public IPAddress Address { get; set; }
     }
 
-    public class DNS : StateMachine
+    class DNS : StateMachine
     {
         public const int StoppedEvent = 1;
         public const int DoneEvent = 2;

@@ -5,7 +5,7 @@ using NetMessage.Core.Core;
 
 namespace NetMessage.Core.Transport
 {
-    public abstract class PipeBase<T> : StateMachine, IPipe<T> where T: MessageBase
+    abstract class PipeBase : StateMachine, IPipe
     {
         public const int InEvent = 33987;
         public const int OutEvent = 33988;
@@ -29,13 +29,13 @@ namespace NetMessage.Core.Transport
         private InState m_inState;
         private OutState m_outState;
 
-        private Socket<T> m_socket;
+        private Socket m_socket;
 
         private StateMachineEvent m_inEvent;
         private StateMachineEvent m_outEvent;
         private EndpointOptions m_options;
 
-        public PipeBase(EndpointBase<T> endpointBase)
+        public PipeBase(EndpointBase endpointBase)
             : base(0, endpointBase.Endpoint.Socket)
         {
             m_state = State.Idle;
@@ -153,7 +153,7 @@ namespace NetMessage.Core.Transport
             return m_socket.IsPeer(socketType);
         }
 
-        public PipeStatus Send(T message)
+        public PipeStatus Send(Message message)
         {
             Debug.Assert(m_outState == OutState.Idle);
 
@@ -172,7 +172,7 @@ namespace NetMessage.Core.Transport
             return PipeStatus.Release;
         }
 
-        public PipeStatus Receive(out T message)
+        public PipeStatus Receive(out Message message)
         {
             Debug.Assert(m_inState == InState.Idle);
             m_inState = InState.Receiving;
@@ -199,8 +199,8 @@ namespace NetMessage.Core.Transport
 
         }
 
-        protected abstract PipeStatus SendInner(T message);
+        protected abstract PipeStatus SendInner(Message message);
 
-        protected abstract PipeStatus ReceiveInner(out T message);
+        protected abstract PipeStatus ReceiveInner(out Message message);
     }
 }

@@ -8,10 +8,11 @@ using System.Threading.Tasks;
 
 namespace NetMessage.Core.AsyncIO
 {
-    public delegate void OnContextLeaveDelegate(Context context);
+    delegate void OnContextLeaveDelegate(Context context);
 
-    public class Context : IDisposable
+    class Context : IDisposable
     {
+        private readonly Pool m_pool;
         private OnContextLeaveDelegate m_onLeave;
 
         private Queue<StateMachineEvent> m_events;
@@ -19,8 +20,9 @@ namespace NetMessage.Core.AsyncIO
 
         private object m_sync;
         
-        public Context()
+        public Context(Pool pool)
         {
+            m_pool = pool;
             m_events = new Queue<StateMachineEvent>();
             m_eventsTo = new Queue<StateMachineEvent>();
 
@@ -39,11 +41,7 @@ namespace NetMessage.Core.AsyncIO
 
         public void Enter()
         {            
-            Monitor.Enter(m_sync);
-
-            //bool taken = false;
-            //m_spinLock.Enter(ref taken);
-            //Debug.Assert(taken);
+            Monitor.Enter(m_sync);          
         }
 
         public void Leave()
@@ -68,8 +66,7 @@ namespace NetMessage.Core.AsyncIO
             }
 
             Monitor.Exit(m_sync);
-            //m_spinLock.Exit();
-
+            
             if (eventsTo != null)
             {
                 while (eventsTo.Count > 0)
@@ -99,6 +96,11 @@ namespace NetMessage.Core.AsyncIO
         {
             @event.Activate();
             m_eventsTo.Enqueue(@event);
+        }
+
+        public Worker ChooseWorker()
+        {
+            return m_pool.ChooseWorker();
         }
     }
 }

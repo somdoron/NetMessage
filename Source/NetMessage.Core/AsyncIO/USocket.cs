@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
@@ -8,17 +9,18 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using AsyncIO;
 using NetSocket = System.Net.Sockets.Socket;
 
 namespace NetMessage.Core.AsyncIO
 {
-    public class USocket : StateMachine, IDisposable
+    class USocket : StateMachine, IDisposable
     {
         /// <summary>
         /// Maximum number of iovecs that can be passed to nn_usock_send function.
         /// </summary>
         public const int MaxIOCount = 3;
-        
+
         enum State
         {
             Idle = 1,
@@ -36,8 +38,8 @@ namespace NetMessage.Core.AsyncIO
             StoppingAccept
         }
 
-        private const int InSourceId = 31;
-        private const int OutSourceId = 32;
+        public const int InSourceId = 31;
+        public const int OutSourceId = 32;
 
         public const int ConnectedEvent = 1;
         public const int AcceptedEvent = 2;
@@ -58,9 +60,7 @@ namespace NetMessage.Core.AsyncIO
 
         private State m_state;
 
-        private NetSocket m_socket;
-        private AsyncOperation m_in;
-        private AsyncOperation m_out;
+        private AsyncSocket m_socket;
 
         private StateMachineEvent m_establishedEvent;
         private StateMachineEvent m_sendEvent;
@@ -69,27 +69,27 @@ namespace NetMessage.Core.AsyncIO
 
         private USocket m_acceptSocket;
 
+        private WorkerOperation m_in;
+        private WorkerOperation m_out;
+
         public USocket(int sourceId, StateMachine owner)
             : base(sourceId, owner)
         {
             m_state = State.Idle;
-
-            m_in = new AsyncOperation(InSourceId, this);
-            m_out = new AsyncOperation(OutSourceId, this);
 
             m_establishedEvent = new StateMachineEvent();
             m_sendEvent = new StateMachineEvent();
             m_receivedEvent = new StateMachineEvent();
             m_errorEvent = new StateMachineEvent();
             m_acceptSocket = null;
+
+            m_in = new WorkerOperation(InSourceId, this);
+            m_out = new WorkerOperation(OutSourceId, this);
         }
 
         public override void Dispose()
         {
             Debug.Assert(m_state == State.Idle);
-
-            m_in.Dispose();
-            m_out.Dispose();
 
             if (m_socket != null)
             {
@@ -114,12 +114,16 @@ namespace NetMessage.Core.AsyncIO
             }
         }
 
-        public int BytesReceived
+        public int BytesReceived { get; set; }
+
+        public WorkerOperation In
         {
-            get
-            {
-                return m_in.SocketAsyncEventArgs.BytesTransferred;
-            }
+            get { return m_in; }
+        }
+
+        public WorkerOperation Out
+        {
+            get { return m_out; }
         }
 
         public void SwapOwner(ref StateMachine owner, ref int sourceId)
@@ -129,7 +133,23 @@ namespace NetMessage.Core.AsyncIO
 
         public void Start(AddressFamily addressFamily, SocketType socketType, ProtocolType protocolType)
         {
-            m_socket = new NetSocket(addressFamily, socketType, protocolType);
+            m_socket = AsyncSocket.Create(addressFamily, socketType, protocolType);
+
+            if (addressFamily == AddressFamily.InterNetworkV6)
+            {
+                try
+                {
+                    m_socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, 0);
+                }
+                catch
+                {
+                    
+                }
+            }
+
+            Worker worker = ChooseWorker();
+            worker.CompletionPort.AssociateSocket(m_socket, this);
+
             base.StartStateMachine();
         }
 
@@ -149,10 +169,10 @@ namespace NetMessage.Core.AsyncIO
         {
             Debug.Assert(m_state == State.Starting || m_state == State.Accepted);
 
-            m_socket.SetSocketOption(level, name, value);               
+            m_socket.SetSocketOption(level, name, value);
         }
 
-        public void Bind(EndPoint endPoint)
+        public void Bind(IPEndPoint endPoint)
         {
             Debug.Assert(m_state == State.Starting);
 
@@ -171,6 +191,16 @@ namespace NetMessage.Core.AsyncIO
         }
 
         /// <summary>
+        /// When all the tuning is done on the accepted socket, call this function
+        /// to activate standard data transfer phase.
+        /// </summary>
+        public void Activate()
+        {
+            Action(ActivateAction);
+        }
+
+
+        /// <summary>
         /// Accept a new connection from a listener. When done, NN_USOCK_ACCEPTED
         /// event will be delivered to the accepted socket. To cancel the operation,
         /// stop the socket being accepted. Listening socket should not be stopped
@@ -183,173 +213,62 @@ namespace NetMessage.Core.AsyncIO
             listener.Action(AcceptAction);
             Action(BeingAcceptedAction);
 
-            listener.m_in.SocketAsyncEventArgs.AcceptSocket = m_socket;
-            
-            bool isPending = listener.m_socket.AcceptAsync(listener.m_in.SocketAsyncEventArgs);
+            listener.m_socket.Accept(m_socket);
 
-            if (isPending)
-            {
-                m_acceptSocket = listener;
-                listener.m_acceptSocket = this;
+            m_acceptSocket = listener;
+            listener.m_acceptSocket = this;
 
-                listener.m_in.Start(false);
-            }
-            else
-            {                
-                if (listener.m_in.SocketAsyncEventArgs.SocketError == SocketError.Success)
-                {
-                    listener.Action(DoneAction);
-                    Action(DoneAction);
-                }
-                else
-                {
-                    listener.Action(ErrorAction);
-                    Action(ErrorAction);
-                }
-            }
+            listener.m_in.Start();
         }
 
-        /// <summary>
-        /// When all the tuning is done on the accepted socket, call this function
-        /// to activate standard data transfer phase.
-        /// </summary>
-        public void Activate()
-        {
-            Action(ActivateAction);
-        }
 
         /// <summary>
         /// Start connecting. Prior to this call the socket has to be bound to a local
         /// address. When connecting is done NN_USOCK_CONNECTED event will be reaised.
         /// If connecting fails NN_USOCK_ERROR event will be raised.
         /// </summary>
-        public void Connect(EndPoint endpoint)
+        public void Connect(IPEndPoint endpoint)
         {
             Debug.Assert(m_state == State.Starting);
 
             Action(ConnectAction);
 
-            if (m_out.SocketAsyncEventArgs.BufferList != null)
+            try
             {
-                m_out.SocketAsyncEventArgs.BufferList = null;
+                m_socket.Connect(endpoint);
+                m_out.Start();
             }
-            else if (m_out.SocketAsyncEventArgs.Buffer != null)
+            catch (SocketException)
             {
-                m_out.SocketAsyncEventArgs.SetBuffer(null,0,0);
-            }
-
-            m_out.SocketAsyncEventArgs.RemoteEndPoint = endpoint;            
-            
-            bool isPending = m_socket.ConnectAsync(m_out.SocketAsyncEventArgs);
-
-            if (isPending)
-            {
-                m_out.Start(false);
-            }
-            else
-            {                
-                if (m_out.SocketAsyncEventArgs.SocketError == SocketError.Success)
-                {
-                    Action(DoneAction);
-                }
-                else
-                {
-                    Action(ErrorAction);
-                }
+                Action(ErrorAction);
             }
         }
-
-        int counter = 0;
-        private int averagePacket = 0;
 
         public void Send(byte[] buffer, int offset, int count)
         {
-            counter++;
-            averagePacket += count;                           
-
-            if (m_out.SocketAsyncEventArgs.Buffer != buffer)
+            try
             {
-                m_out.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);
+                m_socket.Send(buffer, offset, count, SocketFlags.None);
+                m_out.Start();
             }
-            else
+            catch (SocketException)
             {
-                m_out.SocketAsyncEventArgs.SetBuffer(offset, count);
+                Action(ErrorAction);
             }
-            
-            bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);
-
-            if (isPending)
-            {
-                m_out.Start(false);                                
-            }
-            else
-            {                                
-                if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
-                {
-                    Action(ErrorAction);
-                }
-                else
-                {
-                    Feed(OutSourceId, DoneAction, null);
-                }
-            }            
         }
-
-        //public bool Send(IList<ArraySegment<byte>> items)
-        //{
-        //    Debug.Assert(m_state == State.Active);
-
-        //    m_out.SocketAsyncEventArgs.BufferList = items;
-
-        //    m_out.Start(false);
-        //    bool isPending = m_socket.SendAsync(m_out.SocketAsyncEventArgs);
-
-        //    if (isPending)
-        //    {
-        //        m_out.Waiting(false);
-
-        //        return m_out.IsIdle;
-        //    }
-        //    else
-        //    {
-        //        m_out.Stop();
-
-        //        if (m_out.SocketAsyncEventArgs.SocketError != SocketError.Success)
-        //        {
-        //            Action(ErrorAction);
-        //        }
-        //        else
-        //        {
-        //            Feed(OutSourceId, DoneAction, null);
-        //        }
-        //    }
-
-        //    return false;
-        //}
 
         public void Receive(byte[] buffer, int offset, int count)
         {
             Debug.Assert(m_state == State.Active);
 
-            m_in.SocketAsyncEventArgs.SetBuffer(buffer, offset, count);            
-
-            bool isPending = m_socket.ReceiveAsync(m_in.SocketAsyncEventArgs);
-
-            if (isPending)
+            try
             {
-                m_in.Start(true);
+                m_socket.Receive(buffer, offset, count, SocketFlags.None);
+                m_in.Start();
             }
-            else
-            {                
-                if (m_in.SocketAsyncEventArgs.SocketError != SocketError.Success || m_in.SocketAsyncEventArgs.BytesTransferred == 0)
-                {
-                    Action(ErrorAction);
-                }
-                else
-                {
-                    Debug.Assert(false);
-                    Feed(InSourceId, DoneAction, null);
-                }
+            catch (SocketException)
+            {
+                Action(ErrorAction);
             }
         }
 
@@ -435,7 +354,7 @@ namespace NetMessage.Core.AsyncIO
             try
             {
                 // the only way to cancel async operation in .net is to close the socket
-                m_socket.Close();
+                m_socket.Dispose();
             }
             catch (SocketException ex)
             {
@@ -531,11 +450,11 @@ namespace NetMessage.Core.AsyncIO
                         case OutSourceId:
                             switch (type)
                             {
-                                case AsyncOperation.DoneEvent:
+                                case WorkerOperation.DoneEvent:
                                     m_state = State.Active;
                                     Raise(m_establishedEvent, ConnectedEvent);
                                     break;
-                                case AsyncOperation.ErrorEvent:
+                                case WorkerOperation.ErrorEvent:
                                     CloseAndDisposeSocket();
                                     m_state = State.Done;
                                     Raise(m_errorEvent, ErrorEvent);
@@ -550,10 +469,10 @@ namespace NetMessage.Core.AsyncIO
                         case InSourceId:
                             switch (type)
                             {
-                                case AsyncOperation.DoneEvent:
+                                case WorkerOperation.DoneEvent:
                                     Raise(m_receivedEvent, ReceivedEvent);
                                     break;
-                                case AsyncOperation.ErrorEvent:
+                                case WorkerOperation.ErrorEvent:
                                     if (CloseSocket())
                                     {
                                         Raise(m_errorEvent, ShutdownEvent);
@@ -569,10 +488,10 @@ namespace NetMessage.Core.AsyncIO
                         case OutSourceId:
                             switch (type)
                             {
-                                case AsyncOperation.DoneEvent:
+                                case WorkerOperation.DoneEvent:
                                     Raise(m_sendEvent, SentEvent);
                                     break;
-                                case AsyncOperation.ErrorEvent:
+                                case WorkerOperation.ErrorEvent:
                                     if (CloseSocket())
                                     {
                                         Raise(m_errorEvent, ShutdownEvent);
@@ -649,7 +568,7 @@ namespace NetMessage.Core.AsyncIO
                         case InSourceId:
                             switch (type)
                             {
-                                case AsyncOperation.DoneEvent:
+                                case WorkerOperation.DoneEvent:
                                     m_acceptSocket.m_state = State.Accepted;
 
                                     m_acceptSocket.Raise(m_establishedEvent, AcceptedEvent);
@@ -672,8 +591,8 @@ namespace NetMessage.Core.AsyncIO
 
                             switch (type)
                             {
-                                case AsyncOperation.DoneEvent:
-                                case AsyncOperation.ErrorEvent:
+                                case WorkerOperation.DoneEvent:
+                                case WorkerOperation.ErrorEvent:
                                     m_state = State.Listening;
                                     m_acceptSocket.Action(DoneAction);
                                     break;
@@ -688,21 +607,12 @@ namespace NetMessage.Core.AsyncIO
         {
             try
             {
-                m_socket.Close();
+                m_socket.Dispose();
             }
             catch (SocketException ex)
             {
                 Debug.Assert(false, ex.ToString());
-            }
-
-            try
-            {
-                m_socket.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Debug.Assert(false, ex.ToString());
-            }
+            }            
 
             m_socket = null;
         }

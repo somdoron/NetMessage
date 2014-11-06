@@ -13,7 +13,7 @@ using NetMessage.Core;
 
 namespace NetMessage.Core
 {
-    public abstract class Socket<T> : StateMachine where T : MessageBase
+    abstract class Socket : StateMachine
     {
         public const int StoppedAction = 1;        
 
@@ -34,8 +34,8 @@ namespace NetMessage.Core
         
         private SocketState m_state;
 
-        private SocketBase<T> m_socketBase;
-        private SocketType<T> m_socketType;
+        private SocketBase m_socketBase;
+        private SocketType m_socketType;
 
         private SocketFlags m_flags;
 
@@ -43,8 +43,8 @@ namespace NetMessage.Core
         private Signaler m_receiveSignaler;
         private AutoResetEvent m_terminateEvent;
 
-        private List<Endpoint<T>> m_endpoints;
-        private List<Endpoint<T>> m_shutingdownEndpoints;
+        private List<Endpoint> m_endpoints;
+        private List<Endpoint> m_shutingdownEndpoints;
 
         /// <summary>
         /// Next endpoint ID to assign to a new endpoint.
@@ -63,8 +63,7 @@ namespace NetMessage.Core
 
         private Dictionary<string, OptionSet> m_optionSets;
 
-        public Socket(SocketType<T> socketType)
-            : base(new Context())
+        public Socket(SocketType socketType) : base(new Context(Global.Pool))
         {
             // Make sure that at least one message direction is supported.
             Debug.Assert(((socketType.Flags & SocketTypeFlags.NoReceive) == 0) ||
@@ -95,8 +94,8 @@ namespace NetMessage.Core
             m_terminateEvent = new AutoResetEvent(false);
 
             m_flags = 0;
-            m_endpoints = new List<Endpoint<T>>();
-            m_shutingdownEndpoints = new List<Endpoint<T>>();
+            m_endpoints = new List<Endpoint>();
+            m_shutingdownEndpoints = new List<Endpoint>();
             m_endpointId = 1;
 
             m_optionSets = new Dictionary<string, OptionSet>();
@@ -135,7 +134,7 @@ namespace NetMessage.Core
             get { return m_endpointTemplate; }
         }
 
-        protected abstract Transport<T> GetTransport(string name);
+        protected abstract Transport.Transport GetTransport(string name);
         
 
         public override void Dispose()
@@ -406,7 +405,7 @@ namespace NetMessage.Core
             string protocol = address.Substring(0, delimiterIndex);
             address = address.Substring(delimiterIndex + 3);
 
-            Transport.Transport<T> transport = GetTransport(protocol);
+            Transport.Transport transport = GetTransport(protocol);
 
             if (transport == null)
             {
@@ -416,14 +415,14 @@ namespace NetMessage.Core
             AddEndpoint(transport, bind, address);
         }
 
-        private int AddEndpoint(Transport.Transport<T> transport, bool bind, string address)
+        private int AddEndpoint(Transport.Transport transport, bool bind, string address)
         {
             Context.Enter();
             try
             {
                 int id = m_endpointId;
 
-                Endpoint<T> endpoint = new Endpoint<T>(this, id, transport, bind, address);
+                Endpoint endpoint = new Endpoint(this, id, transport, bind, address);
                 endpoint.Start();
 
                 // Increase the endpoint ID for the next endpoint.
@@ -443,7 +442,7 @@ namespace NetMessage.Core
             Context.Enter();
             try
             {
-                Endpoint<T> endpoint = m_endpoints.FirstOrDefault(ep => ep.Id == endpointId);
+                Endpoint endpoint = m_endpoints.FirstOrDefault(ep => ep.Id == endpointId);
 
                 if (endpoint != null)
                 {
@@ -460,7 +459,7 @@ namespace NetMessage.Core
             }
         }
 
-        public void SendMessage(T message, bool dontWait = false)
+        public void SendMessage(Message message, bool dontWait = false)
         {
             if (!m_socketType.CanSend)
                 throw new NotSupportedException("Socket type doesn't support sending");
@@ -527,12 +526,12 @@ namespace NetMessage.Core
             }
         }
 
-        public T ReceiveMessage(bool dontWait = false)
+        public Message ReceiveMessage(bool dontWait = false)
         {
             if (!m_socketType.CanReceive)
                 throw new NotSupportedException("Socket type doesn't support receiving");
 
-            T message;
+            Message message;
 
             Context.Enter();
             try
@@ -596,12 +595,12 @@ namespace NetMessage.Core
             }
         }
 
-        internal void Add(IPipe<T> pipe)
+        internal void Add(IPipe pipe)
         {
             m_socketBase.Add(pipe);
         }
 
-        internal void Remove(IPipe<T> pipe)
+        internal void Remove(IPipe pipe)
         {
             m_socketBase.Remove(pipe);
         }
@@ -661,7 +660,7 @@ namespace NetMessage.Core
             if (m_optionSets.TryGetValue(name,out optionSet))
                 return optionSet;
 
-            Transport.Transport<T> transport = GetTransport(name);
+            Transport.Transport transport = GetTransport(name);
 
             if (transport == null)
                 return null;
@@ -713,8 +712,8 @@ namespace NetMessage.Core
             }
             else if (m_state == SocketState.StoppingEndpoints)
             {
-                Debug.Assert(sourceId == Endpoint<T>.SourceId && type == Endpoint<T>.EndpointStoppedEvent);
-                var endpoint = (Endpoint<T>)source;
+                Debug.Assert(sourceId == Endpoint.SourceId && type == Endpoint.EndpointStoppedEvent);
+                var endpoint = (Endpoint)source;
                 m_shutingdownEndpoints.Remove(endpoint);
                 endpoint.Dispose();
 
@@ -776,11 +775,11 @@ namespace NetMessage.Core
                 case SocketState.Active:
                     switch (sourceId)
                     {                     
-                        case Endpoint<T>.SourceId:
+                        case Endpoint.SourceId:
                             switch (type)
                             {
-                                case Endpoint<T>.EndpointStoppedEvent:
-                                    var endpoint = (Endpoint<T>)source;
+                                case Endpoint.EndpointStoppedEvent:
+                                    var endpoint = (Endpoint)source;
                                     m_shutingdownEndpoints.Remove(endpoint);
                                     endpoint.Dispose();
                                     break;
@@ -793,11 +792,11 @@ namespace NetMessage.Core
                             // The assumption is that all the other events come from pipes
                             switch (type)
                             {
-                                case PipeBase<T>.InEvent:
-                                    m_socketBase.In((PipeBase<T>)source);
+                                case PipeBase.InEvent:
+                                    m_socketBase.In((PipeBase)source);
                                     break;
-                                case PipeBase<T>.OutEvent:
-                                    m_socketBase.Out((PipeBase<T>)source);
+                                case PipeBase.OutEvent:
+                                    m_socketBase.Out((PipeBase)source);
                                     break;
                                 default:
                                     // TODO: throw bad action

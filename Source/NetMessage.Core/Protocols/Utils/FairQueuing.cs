@@ -2,18 +2,18 @@
 
 namespace NetMessage.Core.Protocols.Utils
 {
-    public class FairQueuing<T> where T : MessageBase
+    public class FairQueuing
     {
         public class Data
         {
-            public PriorityList<T>.Data PriorityListData { get; set; }
+            public PriorityList.Data PriorityListData { get; set; }
         }
 
-        private PriorityList<T> m_priorityList;
+        private PriorityList m_priorityList;
 
         public FairQueuing()
         {
-            m_priorityList = new PriorityList<T>();
+            m_priorityList = new PriorityList();
         }
 
         public bool CanReceive
@@ -32,7 +32,7 @@ namespace NetMessage.Core.Protocols.Utils
             }
         }
 
-        public Data Add(IPipe<T> pipe, int priority)
+        public Data Add(IPipe pipe, int priority)
         {
             Data data = new Data();
             data.PriorityListData = m_priorityList.Add(pipe, priority);
@@ -50,14 +50,14 @@ namespace NetMessage.Core.Protocols.Utils
             m_priorityList.Activate(data.PriorityListData);
         }
 
-        public SendReceiveResult Receive(out T message)
+        public SendReceiveResult Receive(Message message)
         {
-            IPipe<T> pipe;
+            IPipe pipe;
 
             return Receive(out message, out pipe);
         }
 
-        public SendReceiveResult Receive(out T message, out IPipe<T> pipe)
+        public SendReceiveResult Receive(out Message message, out IPipe pipe)
         {
             pipe = m_priorityList.Pipe;
 

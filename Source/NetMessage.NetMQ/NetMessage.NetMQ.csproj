@@ -40,38 +40,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Frame.cs" />
-    <Compile Include="Global.cs" />
-    <Compile Include="InProc\BoundEndpoint.cs" />
-    <Compile Include="InProc\ConnectEndpoint.cs" />
-    <Compile Include="InProc\InProcSystem.cs" />
-    <Compile Include="InProc\InProcTransport.cs" />
-    <Compile Include="InProc\Session.cs" />
     <Compile Include="Message.cs" />
     <Compile Include="NetMQSocket.cs" />
-    <Compile Include="Patterns\Dealer.cs" />
-    <Compile Include="Patterns\Request.cs" />
-    <Compile Include="Patterns\Response.cs" />
-    <Compile Include="Patterns\Router.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SocketTypes.cs" />
-    <Compile Include="Tcp\AcceptConnection.cs" />
-    <Compile Include="Tcp\BoundEndpoint.cs" />
-    <Compile Include="Tcp\ConnectEndpoint.cs" />
-    <Compile Include="Tcp\DecoderBase.cs" />
-    <Compile Include="Tcp\DecoderV2.cs" />
-    <Compile Include="Tcp\EncoderV2.cs" />
-    <Compile Include="Tcp\EncoderBase.cs" />
-    <Compile Include="Tcp\HandshakeBase.cs" />
-    <Compile Include="Tcp\Session.cs" />
-    <Compile Include="Tcp\TcpOptionSet.cs" />
-    <Compile Include="Tcp\TcpTransport.cs" />
-    <Compile Include="Tcp\ZMTPHandshake.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NetMessage.Core\NetMessage.Core.csproj">
+    <ProjectReference Include="..\NetMessage.Core\NetMessage.csproj">
       <Project>{28919040-a12d-4b4e-a478-e149fe99f0cc}</Project>
-      <Name>NetMessage.Core</Name>
+      <Name>NetMessage</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Patterns\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

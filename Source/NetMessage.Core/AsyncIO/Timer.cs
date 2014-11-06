@@ -1,43 +1,55 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using OSTimer = System.Threading.Timer;
 
 namespace NetMessage.Core.AsyncIO
 {
-    public class Timer : StateMachine
+    class Timer : StateMachine
     {
         public const int TimeOutEvent = 1;
         public const int StoppedEvent = 2;
 
+        public const int StartTaskSourceId = 1;
+        public const int StopTaskSourceId = 2;
+
+        public const int TimeOutAction = 1;
+
         enum State
         {
-            Idle = 1, Active
+            Idle = 1, Active, Stopping
         }
 
         private State m_state;
-
-        private const int TimeOutAction = 1;
+        private WorkerTask m_startTask;
+        private WorkerTask m_stopTask;
+        private Worker m_worker;
+        private int m_timeout;
 
         private StateMachineEvent m_doneEvent;
-
-        private OSTimer m_osTimer;
 
         public Timer(int sourceId, StateMachine owner)
             : base(sourceId, owner)
         {
-            m_osTimer = new OSTimer(OnTimeout, null, Timeout.Infinite, Timeout.Infinite);
             m_state = State.Idle;
             m_doneEvent = new StateMachineEvent();
+            m_worker = ChooseWorker();
+            m_timeout = -1;
+
+            m_startTask = new WorkerTask(StartTaskSourceId, this);
+            m_stopTask = new WorkerTask(StopTaskSourceId, this);
         }
 
         public override void Dispose()
         {
             m_doneEvent.Dispose();
-            m_osTimer.Dispose();
+            m_stopTask.Dispose();
+            m_startTask.Dispose();
+
+            base.Dispose();
         }
 
         public bool IsIdle
@@ -50,38 +62,38 @@ namespace NetMessage.Core.AsyncIO
 
         public void Start(int timeout)
         {
-            m_osTimer.Change(timeout, Timeout.Infinite);
-            StartStateMachine();
+            m_timeout = timeout;
+            base.StartStateMachine();
         }
 
         public void Stop()
         {
-            StopStateMachine();
-        }
-
-        private void OnTimeout(object state)
-        {
-            Context.Enter();
-            try
-            {
-                if (m_state == State.Active)
-                    Action(TimeOutAction);
-            }
-            finally
-            {
-                Context.Leave();
-            }
+            base.StopStateMachine();
         }
 
         protected override void Shutdown(int sourceId, int type, StateMachine source)
         {
             if (sourceId == ActionSourceId && type == StopAction)
             {
-                m_osTimer.Change(Timeout.Infinite, Timeout.Infinite);
-
-                m_state = State.Idle;
-                Stopped(StoppedEvent);
+                m_state = State.Stopping;
+                m_worker.Execute(m_stopTask);
+                
             }
+            else if (m_state == State.Stopping)
+            {
+                if (sourceId == StopTaskSourceId)
+                {
+                    m_worker.RemoveTimer(this);
+                    m_state = State.Idle;
+                    Stopped(StoppedEvent);
+                }
+
+                return;
+            }
+            else
+            {
+                Debug.Assert(false);    
+            }            
         }
 
         protected override void Handle(int sourceId, int type, StateMachine source)
@@ -96,6 +108,7 @@ namespace NetMessage.Core.AsyncIO
                             {
                                 case StartAction:
                                     m_state = State.Active;
+                                    m_worker.Execute(m_startTask);
                                     break;
                             }
                             break;
@@ -104,6 +117,10 @@ namespace NetMessage.Core.AsyncIO
                 case State.Active:
                     switch (sourceId)
                     {
+                        case StartTaskSourceId:
+                            m_worker.AddTimer(m_timeout, this);
+                            m_timeout = -1;
+                            break;
                         case ActionSourceId:
                             switch (type)
                             {

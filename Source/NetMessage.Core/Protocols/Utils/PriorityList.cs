@@ -4,11 +4,11 @@ using NetMessage.Core.Core;
 
 namespace NetMessage.Core.Protocols.Utils
 {
-    public class PriorityList<T> where T : MessageBase
+    public class PriorityList
     {        
         public class Data
         {
-            public IPipe<T> Pipe { get; set; }
+            public IPipe Pipe { get; set; }
 
             public int Priority { get; set; }            
         }
@@ -58,7 +58,7 @@ namespace NetMessage.Core.Protocols.Utils
             }
         }
 
-        public IPipe<T> Pipe            
+        public IPipe Pipe            
         {
             get
             {
@@ -79,7 +79,7 @@ namespace NetMessage.Core.Protocols.Utils
             }
         }      
 
-        public Data Add(IPipe<T> pipe, int priority)
+        public Data Add(IPipe pipe, int priority)
         {
             Data data = new Data();
             data.Pipe = pipe;

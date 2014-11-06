@@ -4,8 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core;
+using NetMessage.Core.Core;
 
-namespace NetMessage.Core.Core
+namespace NetMessage.Core
 {
     [Flags]
     public enum SocketTypeFlags
@@ -15,7 +16,7 @@ namespace NetMessage.Core.Core
         NoSend = 2,
     }
 
-    public abstract class SocketType<T> where T : MessageBase
+    abstract class SocketType
     {        
         private int m_protocol;
         private SocketTypeFlags m_flags;
@@ -26,7 +27,7 @@ namespace NetMessage.Core.Core
             m_flags = flags;
         }
 
-        public abstract SocketBase<T> Create(object hint);
+        public abstract SocketBase Create(object hint);
 
         public abstract bool IsPeer(int socketType);
 

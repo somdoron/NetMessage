@@ -2,18 +2,18 @@
 
 namespace NetMessage.Core.Protocols.Utils
 {
-    public class LoadBalancer<T> where T : MessageBase
+    public class LoadBalancer
     {
          public class Data
         {
-            public PriorityList<T>.Data PriorityListData { get; set; }
+            public PriorityList.Data PriorityListData { get; set; }
         }
 
-        private PriorityList<T> m_priorityList;
+        private PriorityList m_priorityList;
 
         public LoadBalancer()
         {
-            m_priorityList = new PriorityList<T>();
+            m_priorityList = new PriorityList();
         }
 
         public bool CanSend
@@ -32,7 +32,7 @@ namespace NetMessage.Core.Protocols.Utils
             }
         }
 
-        public Data Add(IPipe<T> pipe, int priority)
+        public Data Add(IPipe pipe, int priority)
         {
             Data data = new Data();
             data.PriorityListData = m_priorityList.Add(pipe, priority);
@@ -50,13 +50,13 @@ namespace NetMessage.Core.Protocols.Utils
             m_priorityList.Activate(data.PriorityListData);
         }
 
-        public SendReceiveResult Send(T message)
+        public SendReceiveResult Send(Message message)
         {
-            IPipe<T> pipe;
+            IPipe pipe;
             return Send(message, out pipe);
         }
 
-        public SendReceiveResult Send(T message, out IPipe<T> pipe)
+        public SendReceiveResult Send(Message message, out IPipe pipe)
         {
             pipe = m_priorityList.Pipe;
 

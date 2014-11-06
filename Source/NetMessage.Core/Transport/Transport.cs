@@ -2,7 +2,7 @@
 
 namespace NetMessage.Core.Transport
 {
-    public abstract class Transport<T> : IDisposable where T: MessageBase
+    abstract class Transport : IDisposable
     {
         public abstract OptionSet GetOptionSet();
 
@@ -10,8 +10,8 @@ namespace NetMessage.Core.Transport
 
         public abstract void Dispose();
         
-        public abstract EndpointBase<T> Bind(object hint);
+        public abstract EndpointBase Bind(object hint);
 
-        public abstract EndpointBase<T> Connect(object hint);
+        public abstract EndpointBase Connect(object hint);
     }
 }

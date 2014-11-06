@@ -8,7 +8,7 @@ using NetMessage.Core.AsyncIO;
 
 namespace NetMessage.Core.Transport.Utils
 {
-    public class Backoff : IDisposable
+    class Backoff : IDisposable
     {
         public const int TimeOutEvent = Timer.TimeOutEvent;
         public const int StoppedEvent = Timer.StoppedEvent;

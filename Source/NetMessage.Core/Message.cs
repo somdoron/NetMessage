@@ -4,13 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NetMessage.Core
+namespace NetMessage
 {
-    [Flags]
-    public enum SocketEvents
+    public class Message
     {
-        None=0,
-        In=1,
-        Out=2,
     }
 }

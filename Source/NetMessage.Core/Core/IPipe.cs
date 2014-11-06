@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NetMessage.Core.Core
+namespace NetMessage.Core
 {    
     public enum PipeStatus
     {        
@@ -12,13 +12,13 @@ namespace NetMessage.Core.Core
         Release = 1,        
     }    
 
-    public interface IPipe<T> where T: MessageBase
+    public interface IPipe
     {
         object Data { get; set; }
 
-        PipeStatus Send(T message);
+        PipeStatus Send(Message message);
 
-        PipeStatus Receive(out T message);
+        PipeStatus Receive(out Message message);
 
         object GetOption(SocketOption option);
     }

@@ -49,9 +49,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NetMessage.Core\NetMessage.Core.csproj">
+    <ProjectReference Include="..\NetMessage.Core\NetMessage.csproj">
       <Project>{28919040-A12D-4B4E-A478-E149FE99F0CC}</Project>
-      <Name>NetMessage.Core</Name>
+      <Name>NetMessage</Name>
     </ProjectReference>
     <ProjectReference Include="..\NetMessage.NetMQ\NetMessage.NetMQ.csproj">
       <Project>{11C5EA68-60AE-42E9-927A-E7F4CCF0311E}</Project>

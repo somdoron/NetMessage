@@ -6,20 +6,21 @@ using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading.Tasks;
 using NetMessage.Core.AsyncIO;
+using NetMessage.Core.Core;
 
-namespace NetMessage.Core.Core
+namespace NetMessage.Core
 {
     public enum SendReceiveResult
     {
         Ok, ShouldTryAgain
     }
 
-    public abstract class SocketBase<T> : IDisposable where T : MessageBase
+    abstract class SocketBase : IDisposable
     {
         //public const int EventIn = 1;
         //public const int EventOut = 2;
 
-        private Socket<T> m_socket;
+        private Socket m_socket;
 
         /// <summary>
         /// Initialise the socket base class. 'hint' is the opaque value passed to the
@@ -28,7 +29,7 @@ namespace NetMessage.Core.Core
         /// <param name="hint"></param>
         protected SocketBase(object hint)
         {
-            m_socket = (Socket<T>) hint;
+            m_socket = (Socket) hint;
         }
 
         public virtual void Dispose()
@@ -67,16 +68,16 @@ namespace NetMessage.Core.Core
             return true;
         }        
 
-        protected internal abstract void Add(IPipe<T> pipe);
-        protected internal abstract void Remove(IPipe<T> pipe);
+        protected internal abstract void Add(IPipe pipe);
+        protected internal abstract void Remove(IPipe pipe);
 
-        protected internal abstract void In(IPipe<T> pipe);
-        protected internal abstract void Out(IPipe<T> pipe);
+        protected internal abstract void In(IPipe pipe);
+        protected internal abstract void Out(IPipe pipe);
 
         protected internal abstract SocketEvents Events { get; }
 
-        protected internal abstract SendReceiveResult Send(T message);
-        protected internal abstract SendReceiveResult Receive(out T message);
+        protected internal abstract SendReceiveResult Send(Message message);
+        protected internal abstract SendReceiveResult Receive(out Message message);
 
         protected internal abstract void SetOption(int option, object value);        
     }

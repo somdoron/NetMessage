@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace NetMessage.Core.AsyncIO
 {
-    public class StateMachineEvent : IDisposable
+    class StateMachineEvent : IDisposable
     {
         public StateMachineEvent()
         {
@@ -54,7 +54,7 @@ namespace NetMessage.Core.AsyncIO
         }
     }
 
-    public abstract class StateMachine : IDisposable
+    abstract class StateMachine : IDisposable
     {       
         /// <summary>
         /// Special source for actions. It's negative not to clash with user-defined
@@ -207,6 +207,11 @@ namespace NetMessage.Core.AsyncIO
             {
                 Shutdown(sourceId, type, source);
             }
-        }        
+        }
+
+        protected internal Worker ChooseWorker()
+        {
+            return Context.ChooseWorker();
+        }
     }
 }
