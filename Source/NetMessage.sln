@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.30501.0
+VisualStudioVersion = 12.0.30723.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage", "NetMessage.Core\NetMessage.csproj", "{28919040-A12D-4B4E-A478-E149FE99F0CC}"
 EndProject
@@ -20,6 +20,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Performance", "Performance", "{E01F1EED-AF49-47D4-9E2E-25C1E2A7EBD9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage.Tests", "NetMessage.NetMQ.Tests\NetMessage.Tests.csproj", "{7882F60F-9DF5-4BC1-A019-9AB346D045FF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMessage2", "NetMessage2\NetMessage2.csproj", "{7BACAD80-478C-4B9A-8544-D43DD0ADE7E9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -59,6 +61,10 @@ Global
 		{7882F60F-9DF5-4BC1-A019-9AB346D045FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7882F60F-9DF5-4BC1-A019-9AB346D045FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7882F60F-9DF5-4BC1-A019-9AB346D045FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7BACAD80-478C-4B9A-8544-D43DD0ADE7E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BACAD80-478C-4B9A-8544-D43DD0ADE7E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BACAD80-478C-4B9A-8544-D43DD0ADE7E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BACAD80-478C-4B9A-8544-D43DD0ADE7E9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
